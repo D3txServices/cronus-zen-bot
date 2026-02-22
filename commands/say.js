@@ -40,8 +40,16 @@ module.exports = {
     await interaction.channel.sendTyping();
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    // Send as bot — customer sees it as AI response
-    await interaction.channel.send(message);
+    // Find the latest customer message to reply to
+    const messages = await interaction.channel.messages.fetch({ limit: 20 });
+    const latestCustomerMsg = messages.find(m => !m.author.bot);
+
+    // Reply to their latest message so it looks like AI responded to them
+    if (latestCustomerMsg) {
+      await latestCustomerMsg.reply(message);
+    } else {
+      await interaction.channel.send(message);
+    }
 
     // Confirm silently to you only
     await interaction.reply({
