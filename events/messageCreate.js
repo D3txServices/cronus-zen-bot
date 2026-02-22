@@ -1,6 +1,20 @@
 const { askOpenAI } = require('../handlers/openai');
+const { isAIPaused } = require('../handlers/humanTakeover');
 
 const cooldowns = new Map();
+const OWNER_ROLE_NAME = 'owner'; // matches your role name (case-insensitive)
+
+async function getOwnerPing(guild) {
+  try {
+    await guild.roles.fetch();
+    const ownerRole = guild.roles.cache.find(
+      r => r.name.toLowerCase() === OWNER_ROLE_NAME
+    );
+    return ownerRole ? `<@&${ownerRole.id}>` : '';
+  } catch {
+    return '';
+  }
+}
 
 module.exports = {
   name: 'messageCreate',
@@ -13,6 +27,10 @@ module.exports = {
 
     if (!isSupport && !isTicket) return;
 
+    // ── If AI is paused in this channel, human has taken over ──
+    if (isAIPaused(message.channel.id)) return;
+
+    // ── Cooldown: 1 message per 3s per user ───────────────────
     const now = Date.now();
     if (cooldowns.has(message.author.id)) {
       if (now < cooldowns.get(message.author.id)) return;
@@ -23,11 +41,34 @@ module.exports = {
 
     try {
       const reply = await askOpenAI(message.author.id, message.content);
-      // Plain text reply — no embed box
-      await message.reply(reply);
+
+      // ── Check if AI is escalating ──────────────────────────
+      if (reply.includes('[ESCALATE]')) {
+        const cleanReply = reply.replace('[ESCALATE]', '').trim();
+        const ownerPing = await getOwnerPing(message.guild);
+
+        // Send AI's message without the tag
+        await message.reply(cleanReply);
+
+        // Ping owner separately so it notifies properly
+        await message.channel.send({
+          embeds: [{
+            color: 0xff0000,
+            title: '🚨 Human Support Needed',
+            description: `The AI couldn't fully resolve this issue.\n\n${ownerPing ? `${ownerPing} please take a look!` : 'A staff member is needed here.'}\n\nUse \`/takeover\` to pause the AI and assist manually.`,
+            footer: { text: 'D3TX Support System' },
+            timestamp: new Date().toISOString(),
+          }],
+          content: ownerPing || '',
+        });
+
+      } else {
+        await message.reply(reply);
+      }
+
     } catch (error) {
       console.error('OpenAI error:', error);
-      await message.reply('⚠️ I ran into an issue. Please try again or open a `/ticket`.');
+      await message.reply('⚠️ Something went wrong on my end. A staff member will be with you shortly!');
     }
   },
 };
