@@ -119,16 +119,25 @@ async function closeTicket(interaction) {
   const channel = interaction.channel;
   const guild = interaction.guild;
   const staffRoleId = process.env.STAFF_ROLE_ID;
+  const adminRoleId = process.env.ADMIN_ROLE_ID;
   const member = interaction.member;
-
-  const isStaff = staffRoleId && member.roles.cache.has(staffRoleId);
-  const isOwner = channel.topic === interaction.user.id;
 
   if (!channel.name.startsWith('ticket-')) {
     return interaction.reply({ content: '❌ This is not a ticket channel.', ephemeral: true });
   }
 
-  if (!isStaff && !isOwner) {
+  // Fetch roles to make sure cache is populated
+  await guild.roles.fetch();
+  await guild.members.fetch(interaction.user.id);
+
+  const isGuildOwner = guild.ownerId === interaction.user.id;
+  const isStaff = staffRoleId && member.roles.cache.has(staffRoleId);
+  const isAdmin = adminRoleId && member.roles.cache.has(adminRoleId);
+  const isTicketOwner = channel.topic === interaction.user.id;
+
+  const canClose = isGuildOwner || isStaff || isAdmin || isTicketOwner;
+
+  if (!canClose) {
     return interaction.reply({ content: '❌ You do not have permission to close this ticket.', ephemeral: true });
   }
 
