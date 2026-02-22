@@ -1,4 +1,4 @@
-const { PermissionFlagsBits, ChannelType } = require('discord.js');
+const { PermissionFlagsBits, ChannelType, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
 
 async function createTicket(interaction) {
   const guild = interaction.guild;
@@ -6,9 +6,8 @@ async function createTicket(interaction) {
   const categoryId = process.env.TICKET_CATEGORY_ID;
   const staffRoleId = process.env.STAFF_ROLE_ID;
 
-  // Check if user already has an open ticket
   const existingChannel = guild.channels.cache.find(
-    c => c.name === `ticket-${user.username.toLowerCase().replace(/[^a-z0-9]/g, '')}` 
+    c => c.name === `ticket-${user.username.toLowerCase().replace(/[^a-z0-9]/g, '')}`
   );
 
   if (existingChannel) {
@@ -19,19 +18,12 @@ async function createTicket(interaction) {
   }
 
   try {
-    // Fetch roles to ensure they are cached
     await guild.roles.fetch();
     await guild.members.fetch(user.id);
 
     const permissionOverwrites = [
-      {
-        id: guild.id,
-        deny: [PermissionFlagsBits.ViewChannel],
-      },
-      {
-        id: user.id,
-        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
-      },
+      { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+      { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
     ];
 
     if (staffRoleId) {
@@ -51,14 +43,22 @@ async function createTicket(interaction) {
       permissionOverwrites,
     });
 
+    const closeButton = new ButtonBuilder()
+      .setCustomId('close_ticket')
+      .setLabel('🔒 Close Ticket')
+      .setStyle(ButtonStyle.Danger);
+
+    const row = new ActionRowBuilder().addComponents(closeButton);
+
     await ticketChannel.send({
       embeds: [{
         color: 0x00b4d8,
         title: '🎫 Cronus Zen Support Ticket',
-        description: `Hey ${user}, welcome to your support ticket!\n\nDescribe your issue and our **AI assistant** will help you right away. A staff member will also check in soon.\n\nType \`/close\` to close this ticket when resolved.`,
+        description: `Hey ${user}, welcome to your support ticket!\n\nDescribe your issue and our **AI assistant** will help you right away. A staff member will also check in soon.\n\nClick **🔒 Close Ticket** below or type \`/close\` when resolved.`,
         footer: { text: 'Powered by Cronus Zen Support Bot' },
         timestamp: new Date().toISOString(),
       }],
+      components: [row],
     });
 
     return interaction.reply({
@@ -92,7 +92,70 @@ async function closeTicket(interaction) {
     return interaction.reply({ content: '❌ You do not have permission to close this ticket.', ephemeral: true });
   }
 
-  await interaction.reply({ content: '🔒 Closing ticket in 5 seconds...' });
+  await interaction.reply({ content: '🔒 Saving transcript and closing in 5 seconds...' });
+
+  // Save transcript
+  try {
+    const messages = await channel.messages.fetch({ limit: 100 });
+    const sorted = [...messages.values()].reverse();
+
+    const transcriptLines = sorted.map(m => {
+      const time = m.createdAt.toLocaleString('en-US', { timeZone: 'UTC' });
+      const content = m.content || (m.embeds[0]?.description ?? '[embed]');
+      return `[${time}] ${m.author.tag}: ${content}`;
+    });
+
+    const ticketName = channel.name;
+    const closedBy = interaction.user.tag;
+    const closedAt = new Date().toLocaleString('en-US', { timeZone: 'UTC' });
+
+    let transcriptChannel = interaction.guild.channels.cache.find(
+      c => c.name === 'transcripts' && c.type === ChannelType.GuildText
+    );
+
+    if (!transcriptChannel) {
+      transcriptChannel = await interaction.guild.channels.create({
+        name: 'transcripts',
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          { id: interaction.guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+          ...(staffRoleId ? [{ id: staffRoleId, allow: [PermissionFlagsBits.ViewChannel] }] : []),
+        ],
+      });
+    }
+
+    await transcriptChannel.send({
+      content: `📋 **Transcript: #${ticketName}**\nClosed by: ${closedBy} | ${closedAt} UTC\n${'─'.repeat(40)}`,
+    });
+
+    // Send in chunks to avoid Discord 2000 char limit
+    const chunks = [];
+    let current = '```\n';
+    for (const line of transcriptLines) {
+      if ((current + line + '\n```').length > 1990) {
+        chunks.push(current + '```');
+        current = '```\n' + line + '\n';
+      } else {
+        current += line + '\n';
+      }
+    }
+    chunks.push(current + '```');
+    for (const chunk of chunks) {
+      await transcriptChannel.send({ content: chunk });
+    }
+
+    await transcriptChannel.send({
+      embeds: [{
+        color: 0xff6b6b,
+        description: `✅ Ticket **#${ticketName}** closed by **${closedBy}**`,
+        timestamp: new Date().toISOString(),
+      }],
+    });
+
+  } catch (err) {
+    console.error('Transcript error:', err);
+  }
+
   setTimeout(() => channel.delete().catch(console.error), 5000);
 }
 
