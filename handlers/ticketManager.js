@@ -19,24 +19,36 @@ async function createTicket(interaction) {
   }
 
   try {
+    // Fetch roles to ensure they are cached
+    await guild.roles.fetch();
+    await guild.members.fetch(user.id);
+
+    const permissionOverwrites = [
+      {
+        id: guild.id,
+        deny: [PermissionFlagsBits.ViewChannel],
+      },
+      {
+        id: user.id,
+        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+      },
+    ];
+
+    if (staffRoleId) {
+      const staffRole = guild.roles.cache.get(staffRoleId);
+      if (staffRole) {
+        permissionOverwrites.push({
+          id: staffRole.id,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+        });
+      }
+    }
+
     const ticketChannel = await guild.channels.create({
       name: `ticket-${user.username.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
       type: ChannelType.GuildText,
       parent: categoryId || null,
-      permissionOverwrites: [
-        {
-          id: guild.id, // @everyone - deny
-          deny: [PermissionFlagsBits.ViewChannel],
-        },
-        {
-          id: user.id, // ticket creator - allow
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
-        },
-        ...(staffRoleId ? [{
-          id: staffRoleId, // staff - allow
-          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
-        }] : []),
-      ],
+      permissionOverwrites,
     });
 
     await ticketChannel.send({
