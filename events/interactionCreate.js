@@ -1,6 +1,21 @@
+const { closeTicket } = require('../handlers/ticketManager');
+
 module.exports = {
   name: 'interactionCreate',
   async execute(interaction, client) {
+
+    // Handle button clicks
+    if (interaction.isButton()) {
+      if (interaction.customId === 'close_ticket') {
+        return closeTicket(interaction);
+      }
+      if (interaction.customId === 'open_ticket') {
+        const { createTicket } = require('../handlers/ticketManager');
+        return createTicket(interaction);
+      }
+      return;
+    }
+
     if (!interaction.isChatInputCommand()) return;
 
     const command = client.commands.get(interaction.commandName);
