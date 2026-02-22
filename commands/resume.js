@@ -29,13 +29,8 @@ module.exports = {
     resumeAI(interaction.channel.id);
 
     await interaction.reply({
-      embeds: [{
-        color: 0x00b4d8,
-        title: '🤖 AI Support Resumed',
-        description: 'The AI assistant is now active again in this ticket.',
-        footer: { text: 'D3TX Support' },
-        timestamp: new Date().toISOString(),
-      }],
+      content: '✅ AI is back in control of this ticket.',
+      ephemeral: true,
     });
   },
 };
