@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Anti-Recoil (Universal)",
+    "description": "General anti-recoil script compatible with most FPS games. Reduces vertical recoil on automatic weapons.",
+    "values": "RECOIL_STRENGTH = 15, RECOIL_DELAY = 50",
+    "tags": ["recoil", "fps", "anti-recoil", "universal"]
+  },
+  {
+    "name": "Rapid Fire",
+    "description": "Converts semi-automatic weapons to rapid fire. Works by rapidly pressing the trigger button.",
+    "values": "RAPID_FIRE_SPEED = 10 (lower = faster), FIRE_BUTTON = XB1_RT",
+    "tags": ["rapid fire", "semi-auto", "trigger", "fps"]
+  },
+  {
+    "name": "Warzone Anti-Recoil",
+    "description": "Optimized anti-recoil settings for Call of Duty Warzone. Tuned for ARs and SMGs.",
+    "values": "VERTICAL_RECOIL = 20, HORIZONTAL_RECOIL = 5, DELAY = 40",
+    "tags": ["warzone", "cod", "anti-recoil", "call of duty"]
+  },
+  {
+    "name": "Fortnite Build Macro",
+    "description": "Automated build sequence for Fortnite. Executes a 90s or ramp-rush pattern.",
+    "values": "BUILD_DELAY = 80, SEQUENCE = [wall, floor, ramp], REPEAT = false",
+    "tags": ["fortnite", "build", "macro", "90s"]
+  },
+  {
+    "name": "Aim Assist Boost",
+    "description": "Enhances natural aim assist by micro-adjusting stick input near targets.",
+    "values": "BOOST_STRENGTH = 5, DEADZONE = 10, SMOOTHING = 3",
+    "tags": ["aim assist", "aim", "aimbot", "fps"]
+  }
+]

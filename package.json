@@ -1,0 +1,14 @@
+{
+  "name": "cronus-zen-bot",
+  "version": "1.0.0",
+  "description": "Cronus Zen 24/7 Discord Support Bot",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1",
+    "openai": "^4.28.0",
+    "dotenv": "^16.4.5"
+  }
+}

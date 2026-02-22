@@ -1,0 +1,27 @@
+[
+  {
+    "id": "1",
+    "question": "How do I connect my Cronus Zen to my PS5?",
+    "answer": "Connect your Cronus Zen using a USB cable to the front USB port of your PS5. Make sure you're using the correct port (the one labeled for accessories). Then go to PS5 Settings > Accessories and set USB Communication Speed to Full-Speed. The Zen should appear as a connected device."
+  },
+  {
+    "id": "2",
+    "question": "How do I install a GamePack?",
+    "answer": "1. Open Zen Studio on your PC. 2. Go to the GamePack Library tab. 3. Search for your game. 4. Click Install. 5. Once installed, open the GamePack, configure your settings, and click Write to Zen to save it to your device."
+  },
+  {
+    "id": "3",
+    "question": "Why is my Cronus Zen not being detected by Zen Studio?",
+    "answer": "Try these steps: 1. Use a different USB cable (make sure it's a data cable, not just a charging cable). 2. Try a different USB port on your PC. 3. Reinstall the Zen Studio software. 4. Check Device Manager on Windows to see if the device shows up with any errors. 5. Hold the PS button on your controller for 5 seconds to reset the connection."
+  },
+  {
+    "id": "4",
+    "question": "What is GPC scripting?",
+    "answer": "GPC (GamePack Code) is the scripting language used by Cronus Zen to automate controller inputs. You can write scripts to create anti-recoil, rapid fire, macros, and other automation. Scripts are written in Zen Studio under the Script Editor tab."
+  },
+  {
+    "id": "5",
+    "question": "How do I adjust anti-recoil strength?",
+    "answer": "In your loaded GamePack or GPC script, look for variables labeled RECOIL, ANTI_RECOIL, or similar. Higher values = more recoil compensation. You can adjust these in the Zen Studio script editor or via the Remap menu if the GamePack supports it. Start with small adjustments (5-10) and test in-game."
+  }
+]
