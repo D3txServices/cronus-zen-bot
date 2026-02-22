@@ -28,14 +28,10 @@ module.exports = {
 
     pauseAI(interaction.channel.id);
 
+    // Silent — only you see this confirmation, customer has no idea
     await interaction.reply({
-      embeds: [{
-        color: 0xffa500,
-        title: '👤 Human Support Active',
-        description: `**${interaction.user.username}** has taken over this ticket.\n🤖 AI has been paused in this channel.\n\nType \`/resume\` to hand back to the AI.`,
-        footer: { text: 'D3TX Support' },
-        timestamp: new Date().toISOString(),
-      }],
+      content: '✅ AI paused. You have control — use `/say` to respond as the bot or type normally. Use `/resume` when done.',
+      ephemeral: true,
     });
   },
 };
