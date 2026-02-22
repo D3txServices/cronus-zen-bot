@@ -380,4 +380,281 @@ No script is 100% guaranteed ban-proof forever. Game anti-cheats update constant
 D3TX updates scripts to keep them safe, but always use reasonable values and don't go extreme.
 `;
 
-module.exports = ZEN_KNOWLEDGE;
+// ── APPENDED FROM PDF AUDIT ──────────────────────────
+
+const ZEN_ADVANCED_KNOWLEDGE = `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔌 CRONUS ZEN PORTS — PROG vs CONSOLE/PC
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Zen has TWO different USB connections — people mix these up constantly:
+
+PROG port (labeled PROG):
+- Used ONLY to connect Zen to your PC/Zen Studio
+- Used for: programming scripts, loading GamePacks, updating firmware, configuring settings
+- This port does NOT carry controller signal to console
+- Keep this unplugged when gaming — it's only for setup
+
+CONSOLE/PC port (labeled CONSOLE or PC):
+- Used to connect Zen to your PS5/Xbox/PC for actual gaming
+- This is the live signal path — controller → Zen → Console
+- Also used for entering Zen Bootloader mode during firmware updates
+- This is the port you use every gaming session
+
+COMMON MISTAKE: User plugs Zen into PC via CONSOLE port and wonders why Zen Studio doesn't detect it.
+FIX: Use the PROG port to connect to Zen Studio. Use CONSOLE port when plugged into your console.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 FIRMWARE UPDATE — FULL PROCESS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NORMAL UPDATE (via Zen Studio):
+1. Connect Zen to PC via PROG port
+2. Open Zen Studio
+3. Go to Device > Firmware Update > Online Firmware Update
+4. Follow prompts — DO NOT unplug during update
+5. Zen restarts automatically when done
+
+MANUAL BOOTLOADER METHOD (if Zen Studio can't find device):
+1. Connect Zen to PC via CONSOLE/PC port (not PROG)
+2. Hold the blue reset button on the Zen until OLED displays "Zen Bootloader"
+3. Now open Zen Studio → Device > Firmware Update
+4. Or use the official web updater at cronusmax.com (works in Chrome/Edge only)
+5. DO NOT unplug during update
+
+FIRMWARE 0.0.0 ERROR (after interrupted/failed update):
+This means the firmware got corrupted during update.
+Fix:
+1. Enter Zen Bootloader mode (hold blue reset button + CONSOLE/PC port to PC)
+2. Use Zen Studio Online Firmware Update to reflash
+3. If Zen Studio doesn't see it: use the official web update tool in Chrome
+4. Zen will recover — this is not permanent damage
+
+CURRENT VERSIONS (as of latest docs):
+- Zen Studio: v1.6.1 Build 82
+- Zen Firmware: v2.2.14
+Always keep both updated to latest versions.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎮 PLATFORM SETUP — MISSING DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PS4 PRO SPECIFIC:
+- Front USB ports on PS4 Pro may NOT supply enough power for Zen
+- Always use the REAR USB port on PS4 Pro
+- If Zen randomly disconnects on PS4 Pro: switch to rear port immediately
+
+NINTENDO SWITCH SETUP:
+1. Go to Switch System Settings > Controllers and Sensors
+2. Enable "Pro Controller Wired Communication" — this is REQUIRED
+3. Connect Zen to Switch dock via USB
+4. Docked mode: may require the 15V power supply for reliable operation
+5. Handheld mode: requires a USB-C OTG adapter (sold separately)
+6. Switch Lite: needs USB-C OTG adapter always
+
+NINTENDO SWITCH SETUP:
+1. Go to Switch System Settings > Controllers and Sensors
+2. Enable "Pro Controller Wired Communication" — this is REQUIRED or Zen won't work
+3. Connect Zen to Switch dock via USB
+4. Docked mode: may need the 15V power supply for stable operation
+5. Handheld mode: requires a USB-C OTG adapter (sold separately)
+6. Switch Lite: always needs USB-C OTG adapter
+
+SWITCH CONTROLLER PAIRING:
+- Switch controllers pair via Bluetooth to the Zen
+- Go to Zen Studio > Device > Bluetooth to pair
+
+PS5 SYSTEM UPDATE WARNING:
+A PS5 system update in early 2024 temporarily blocked Cronus Zen connectivity.
+If Zen stops working after a PS5 update: check zendesign.com for a firmware patch.
+D3TX will announce workarounds in Discord when this happens.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🖱️ MAX MAPPER — CONTROLLER SHAPING TOOL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MAX Mapper is a GUI tool inside Zen Studio for shaping analog inputs WITHOUT writing code.
+Access: Zen Studio > MAX Mapper tab
+
+ADJUSTABLE PARAMETERS:
+Left Stick / Right Stick (each has):
+- Size: shapes the outer radial boundary — affects diagonal reach
+- X Sensitivity / Y Sensitivity: how fast the stick responds (higher = faster/more aggressive)
+- X Deadzone / Y Deadzone: inner dead zone size — higher = more center "dead" area
+- X Midpoint / Y Midpoint: splits stick into two sensitivity zones (low/high)
+  - Below midpoint = first sensitivity zone
+  - Above midpoint = second zone (higher multiplier kicks in)
+  - Default midpoint: 50%
+
+Triggers:
+- Sensitivity: how quickly trigger reaches max output (higher = activates faster with less pull)
+
+WHEN TO USE MAX MAPPER:
+- Stick feels jittery at center → increase Deadzone by 2-5
+- Stick feels sluggish/unresponsive → lower Deadzone
+- Want faster initial movement but fine aim at low stick → adjust Midpoint
+- Diagonals feel inconsistent → adjust Size
+- Trigger feels too sensitive or not sensitive enough → adjust Trigger Sensitivity
+
+SENSITIVITY MULTIPLIER VALUES:
+- 100 = 1.0x (normal, no change)
+- 80 = 0.8x (slower, more precise)
+- 120 = 1.2x (faster, more aggressive)
+- 140 = 1.4x (very aggressive)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 GPC ADVANCED FUNCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTROLLER VALUE RANGES (critical for understanding scripts):
+- Buttons: 0 (not pressed) or 100 (pressed) — no in-between
+- Triggers: 0 to 100 (gradual, 0=not pressed, 100=fully pressed)
+- Stick axes: -100 to +100 (negative = left/down, positive = right/up)
+This is why stick scripts look different from button scripts — they work with signed values.
+
+SENSITIVITY FUNCTION:
+sensitivity(axis_id, midpoint, multiplier)
+- midpoint: percentage that splits low/high sensitivity zones (default 50)
+- multiplier: percentage multiplier (100=1x, 140=1.4x, 80=0.8x)
+- Example: sensitivity(XB1_RX, 50, 120) → normal center feel, 20% faster at edge
+
+DEADZONE FUNCTION:
+deadzone(x_axis, y_axis, inner_dz, ...)
+- Removes stick jitter in center dead zone
+- Console default deadzone is approximately 20%
+- Supports square or circular deadzone shape
+- Example: deadzone(XB1_RX, XB1_RY, 10, 10) → 10% inner deadzone on right stick
+
+STICKIZE FUNCTION:
+stickize(x_axis, y_axis, radius)
+- Outer deadzone / radial shaping
+- Shapes diagonal reach to prevent over-extension
+- Radius recommendations vary by console — PS ~65, Xbox ~70
+
+EVENT DETECTION:
+event_press(button) — returns TRUE only on the single frame the button is first pressed
+event_release(button) — returns TRUE only on the single frame the button is released
+Use these instead of get_val() when you only want to trigger something ONCE per press, not hold.
+Example: toggle a mod on/off with one press instead of it firing every frame
+
+GET_PTIME FUNCTION:
+get_ptime(button) — returns milliseconds since the button's state last changed
+Use for "hold for X ms" logic:
+Example: if(get_ptime(PS4_R2) > 500) → trigger something after holding R2 for 500ms
+
+GPC SCRIPT STRUCTURE (up to 9 sections in order):
+1. define — constants (define MY_VAL = 15)
+2. data — arrays
+3. const — constant arrays
+4. remap — button remapping (applied AFTER main executes)
+5. int/bool — variable declarations (must be before init/main)
+6. init { } — runs ONCE at startup
+7. main { } — runs in a LOOP continuously (REQUIRED)
+8. combo name { } — timed sequences using wait(ms)
+9. function name() { } — reusable functions
+
+IMPORTANT: remap section applies AFTER main finishes. Write script logic against original button IDs.
+
+KEYBOARD SHORTCUTS IN ZEN STUDIO:
+- F7 = Compile only (check for errors without running)
+- F5 = Build and Run (compile + load to device RAM for immediate testing)
+- Use F5 + Device Monitor for fast iteration when tweaking scripts
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 DEVICE MONITOR — PERFORMANCE GUIDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Access: Zen Studio > Device Monitor tab
+
+WHAT IT SHOWS:
+- Input values: real-time reading of every button/stick/trigger input from your controller
+- Output values: what the Zen is sending to the console after script processing
+- CPU Load: how hard the Zen VM is working (KEEP BELOW 80%)
+- VM Speed: how fast the main loop runs (default 10ms, range 1ms-40ms)
+- Trace fields: variable values you can log from your script for debugging
+
+CPU LOAD RULES:
+- Below 60%: great, plenty of headroom
+- 60-80%: acceptable, monitor it
+- Above 80%: DANGER — causes output lag, script behaves inconsistently
+- If CPU load is high: simplify script, reduce combo complexity, increase VM speed
+
+VM SPEED:
+- Default: 10ms (main loop runs every 10ms = 100 times per second)
+- Lower = faster loop = more responsive but more CPU load
+- Higher = slower loop = less CPU load but less responsive
+- For most D3TX scripts: keep at default 10ms
+- If experiencing lag: try increasing to 15-20ms
+
+TRACE FIELDS:
+In your GPC script: set_val(TRACE_1, my_variable) — shows value in Device Monitor
+Useful for: checking if a mod is triggering, seeing actual input values, debugging logic
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💾 PERSISTENT VARIABLES (PVAR/SPVAR)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+These save settings to EEPROM so they survive power off:
+
+PVAR (global persistent variables):
+- 16 available total
+- Shared ACROSS all slots
+- Use for settings that should apply everywhere
+
+SPVAR (slot private persistent variables):
+- 64 available per slot
+- Private to each individual slot
+- Use for per-script settings (e.g. recoil value for this specific script)
+
+ACCESS FUNCTIONS:
+get_pvar(SPVAR_1, min, max, default) — read saved value with bounds
+set_pvar(SPVAR_1, value) — write value to storage
+
+IMPORTANT: Never call set_pvar() every main loop — it wears out EEPROM.
+Always gate writes behind event_press() or a state change.
+Reads in init{} are safe — init runs only once.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ MOUSE & KEYBOARD EXTRA NOTES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MOUSE DPI WARNING:
+- PMW3360 sensor (common in gaming mice) has smoothing applied above ~2000 DPI
+- This smoothing can interfere with Zen's input processing
+- Recommended DPI range: 800-1600 DPI for most D3TX MNK layouts
+- If mouse feels laggy or floaty at high DPI: lower DPI to 1600 and test
+
+BIOS MODE FOR KEYBOARDS:
+- Some keyboards need to be switched to "BIOS mode" to be detected by Zen
+- BIOS mode = standard USB HID mode without extra software features
+- How to enable: usually hold Fn + F1 or Fn + Esc on startup (varies by keyboard brand)
+- Check D3TX Discord for specific keyboard compatibility
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨 ANTI-CHEAT — UPDATED DETAILS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RICOCHET (COD) — BEHAVIOR-BASED DETECTION:
+RICOCHET officially states Cronus Zen "is not permitted" in Call of Duty.
+Detection is BEHAVIOR-BASED not device-signature-based — this means:
+- It looks for input PATTERNS that are statistically impossible for humans
+- Perfect recoil control every shot → flagged
+- Inhuman rapid fire speed → flagged
+- Machine-consistent timing on every input → flagged
+- Detection: input timing, consistency, response patterns
+Implication: extreme values are more dangerous than subtle ones.
+D3TX scripts are tuned to stay within human-plausible ranges.
+
+FORTNITE — RESTRICTED HARDWARE WARNING:
+Epic Games officially lists "Cronus Zen" and "Cronus Max" as "restricted hardware."
+Users may see a "Restricted Hardware Warning" popup in Fortnite.
+Attempting to bypass this restriction "may result in a permanent ban" per Epic.
+D3TX Fortnite scripts are built to minimize detection risk but cannot guarantee bypass.
+
+PS5 PLATFORM LEVEL BLOCKING:
+A January 2024 PS5 system update blocked Cronus Zen connectivity.
+Cronus released a firmware patch shortly after.
+This shows platform-level detection can happen at any time.
+Always watch D3TX Discord announcements after PS5 system updates.
+
+NINTENDO SWITCH SETUP:
+1. Go to Switch System Settings > Controllers and Sensors
+2. Enable "Pro Controller Wired Communication" — REQUIRED or Zen won't work
+3. Connect Zen to Switch dock via USB
+4. Docked mode: may need 15V power supply for stable operation
+5. Handheld mode: requires USB-C OTG adapter (sold separately)
+6. Switch Lite: always needs USB-C OTG adapter
+`;
+
+module.exports = ZEN_KNOWLEDGE + ZEN_ADVANCED_KNOWLEDGE;
