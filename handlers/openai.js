@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const ZEN_KNOWLEDGE = require('../data/knowledge');
 const conversationHistory = new Map();
 
 function getFAQ() {
@@ -255,6 +256,7 @@ Only use [ESCALATE] when you have genuinely tried multiple fixes and none worked
 Format: give your final attempt, then add [ESCALATE] at the end.
 Example: "Alright I've tried everything I can — let me grab a human to look at this directly [ESCALATE]"
 
+${ZEN_KNOWLEDGE}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 AUTO-LEARNED FAQ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
