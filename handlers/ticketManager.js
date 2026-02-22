@@ -1,4 +1,18 @@
-const { PermissionFlagsBits, ChannelType, ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+const { PermissionFlagsBits, ChannelType, ButtonBuilder, ButtonStyle, ActionRowBuilder, AttachmentBuilder } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
+
+const counterPath = path.join(__dirname, '../data/ticketCounter.json');
+
+function getNextTicketNumber() {
+  if (!fs.existsSync(counterPath)) {
+    fs.writeFileSync(counterPath, JSON.stringify({ count: 320 }));
+  }
+  const data = JSON.parse(fs.readFileSync(counterPath, 'utf8'));
+  const current = data.count;
+  fs.writeFileSync(counterPath, JSON.stringify({ count: current + 1 }));
+  return current;
+}
 
 async function createTicket(interaction) {
   const guild = interaction.guild;
@@ -6,8 +20,9 @@ async function createTicket(interaction) {
   const categoryId = process.env.TICKET_CATEGORY_ID;
   const staffRoleId = process.env.STAFF_ROLE_ID;
 
+  // Check if user already has an open ticket
   const existingChannel = guild.channels.cache.find(
-    c => c.name === `ticket-${user.username.toLowerCase().replace(/[^a-z0-9]/g, '')}`
+    c => c.name.startsWith('ticket-') && c.topic === user.id
   );
 
   if (existingChannel) {
@@ -20,6 +35,8 @@ async function createTicket(interaction) {
   try {
     await guild.roles.fetch();
     await guild.members.fetch(user.id);
+
+    const ticketNumber = getNextTicketNumber();
 
     const permissionOverwrites = [
       { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -37,9 +54,10 @@ async function createTicket(interaction) {
     }
 
     const ticketChannel = await guild.channels.create({
-      name: `ticket-${user.username.toLowerCase().replace(/[^a-z0-9]/g, '')}`,
+      name: `ticket-${ticketNumber}`,
       type: ChannelType.GuildText,
       parent: categoryId || null,
+      topic: user.id, // store user ID in topic for lookup
       permissionOverwrites,
     });
 
@@ -53,8 +71,22 @@ async function createTicket(interaction) {
     await ticketChannel.send({
       embeds: [{
         color: 0x00b4d8,
-        title: '🎫 Cronus Zen Support Ticket',
-        description: `Hey ${user}, welcome to your support ticket!\n\nDescribe your issue and our **AI assistant** will help you right away. A staff member will also check in soon.\n\nClick **🔒 Close Ticket** below or type \`/close\` when resolved.`,
+        title: `🎫 Ticket #${ticketNumber}`,
+        description: [
+          `Hey ${user}, welcome to your support ticket!`,
+          '',
+          '🤖 **AI Assistant** is active and will respond to your messages automatically.',
+          '👤 **A staff member** will also check in when available.',
+          '',
+          'Just describe your issue below and we\'ll get you sorted!',
+          '',
+          'Click **🔒 Close Ticket** below when your issue is resolved.',
+        ].join('\n'),
+        fields: [
+          { name: 'Ticket Number', value: `#${ticketNumber}`, inline: true },
+          { name: 'Opened By', value: `${user.tag}`, inline: true },
+          { name: 'Status', value: '🟢 Open', inline: true },
+        ],
         footer: { text: 'Powered by Cronus Zen Support Bot' },
         timestamp: new Date().toISOString(),
       }],
@@ -80,9 +112,7 @@ async function closeTicket(interaction) {
   const member = interaction.member;
 
   const isStaff = staffRoleId && member.roles.cache.has(staffRoleId);
-  const isOwner = channel.permissionOverwrites.cache.some(
-    po => po.id === interaction.user.id && po.allow.has(PermissionFlagsBits.ViewChannel)
-  );
+  const isOwner = channel.topic === interaction.user.id;
 
   if (!channel.name.startsWith('ticket-')) {
     return interaction.reply({ content: '❌ This is not a ticket channel.', ephemeral: true });
@@ -94,21 +124,47 @@ async function closeTicket(interaction) {
 
   await interaction.reply({ content: '🔒 Saving transcript and closing in 5 seconds...' });
 
-  // Save transcript
   try {
     const messages = await channel.messages.fetch({ limit: 100 });
     const sorted = [...messages.values()].reverse();
-
-    const transcriptLines = sorted.map(m => {
-      const time = m.createdAt.toLocaleString('en-US', { timeZone: 'UTC' });
-      const content = m.content || (m.embeds[0]?.description ?? '[embed]');
-      return `[${time}] ${m.author.tag}: ${content}`;
-    });
-
     const ticketName = channel.name;
     const closedBy = interaction.user.tag;
     const closedAt = new Date().toLocaleString('en-US', { timeZone: 'UTC' });
 
+    // Build .txt transcript file content
+    const lines = [
+      `╔════════════════════════════════════════╗`,
+      `  Cronus Zen Support — Ticket Transcript`,
+      `╚════════════════════════════════════════╝`,
+      `Ticket  : ${ticketName}`,
+      `Closed  : ${closedAt} UTC`,
+      `Closed By: ${closedBy}`,
+      `${'─'.repeat(50)}`,
+      '',
+    ];
+
+    for (const m of sorted) {
+      const time = m.createdAt.toLocaleString('en-US', { timeZone: 'UTC' });
+      if (m.embeds.length > 0 && !m.content) {
+        const embed = m.embeds[0];
+        lines.push(`[${time}] [EMBED] ${m.author.tag}: ${embed.title ?? ''} — ${embed.description ?? ''}`);
+      } else if (m.content) {
+        lines.push(`[${time}] ${m.author.tag}: ${m.content}`);
+      }
+    }
+
+    lines.push('');
+    lines.push(`${'─'.repeat(50)}`);
+    lines.push(`End of transcript — ${ticketName}`);
+
+    const transcriptText = lines.join('\n');
+
+    // Save as .txt file
+    const tmpPath = path.join('/tmp', `${ticketName}.txt`);
+    fs.writeFileSync(tmpPath, transcriptText, 'utf8');
+    const attachment = new AttachmentBuilder(tmpPath, { name: `${ticketName}.txt` });
+
+    // Find or create #transcripts channel
     let transcriptChannel = interaction.guild.channels.cache.find(
       c => c.name === 'transcripts' && c.type === ChannelType.GuildText
     );
@@ -125,32 +181,22 @@ async function closeTicket(interaction) {
     }
 
     await transcriptChannel.send({
-      content: `📋 **Transcript: #${ticketName}**\nClosed by: ${closedBy} | ${closedAt} UTC\n${'─'.repeat(40)}`,
-    });
-
-    // Send in chunks to avoid Discord 2000 char limit
-    const chunks = [];
-    let current = '```\n';
-    for (const line of transcriptLines) {
-      if ((current + line + '\n```').length > 1990) {
-        chunks.push(current + '```');
-        current = '```\n' + line + '\n';
-      } else {
-        current += line + '\n';
-      }
-    }
-    chunks.push(current + '```');
-    for (const chunk of chunks) {
-      await transcriptChannel.send({ content: chunk });
-    }
-
-    await transcriptChannel.send({
       embeds: [{
         color: 0xff6b6b,
-        description: `✅ Ticket **#${ticketName}** closed by **${closedBy}**`,
+        title: `📋 Transcript — ${ticketName}`,
+        fields: [
+          { name: 'Closed By', value: closedBy, inline: true },
+          { name: 'Closed At', value: `${closedAt} UTC`, inline: true },
+          { name: 'Messages', value: `${sorted.length}`, inline: true },
+        ],
+        footer: { text: 'Transcript saved as .txt file below' },
         timestamp: new Date().toISOString(),
       }],
+      files: [attachment],
     });
+
+    // Cleanup tmp file
+    fs.unlinkSync(tmpPath);
 
   } catch (err) {
     console.error('Transcript error:', err);
