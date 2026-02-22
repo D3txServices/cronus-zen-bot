@@ -9,6 +9,9 @@ const { saveFeedback } = require('./feedbackManager');
 
 const counterPath = path.join(__dirname, '../data/ticketCounter.json');
 
+// Lock set to prevent duplicate closes
+const closingTickets = new Set();
+
 // Pending ratings: messageId -> { userId, ticketName, guildId }
 const pendingRatings = new Map();
 
@@ -129,7 +132,28 @@ async function closeTicket(interaction) {
     return interaction.reply({ content: '❌ You do not have permission to close this ticket.', ephemeral: true });
   }
 
-  await interaction.reply({ content: '🔒 Saving transcript and closing in 5 seconds...' });
+  // Prevent duplicate closes
+  if (closingTickets.has(channel.id)) {
+    return interaction.reply({ content: '⏳ This ticket is already being closed!', ephemeral: true });
+  }
+  closingTickets.add(channel.id);
+
+  // Disable the close button immediately
+  try {
+    const messages = await channel.messages.fetch({ limit: 20 });
+    const botMsg = messages.find(m => m.author.bot && m.components?.length > 0);
+    if (botMsg) {
+      const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
+      const disabledBtn = new ButtonBuilder()
+        .setCustomId('close_ticket')
+        .setLabel('🔒 Closing...')
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(true);
+      await botMsg.edit({ components: [new ActionRowBuilder().addComponents(disabledBtn)] });
+    }
+  } catch {}
+
+  await interaction.reply({ content: '🔒 Saving transcript and closing in 3 seconds...' });
 
   try {
     // Fetch all messages
@@ -274,7 +298,7 @@ async function closeTicket(interaction) {
     console.error('Close ticket error:', err);
   }
 
-  setTimeout(() => channel.delete().catch(console.error), 5000);
+  setTimeout(() => channel.delete().catch(console.error), 3000);
 }
 
 async function handleRatingReaction(reaction, user) {
