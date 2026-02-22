@@ -9,9 +9,16 @@ module.exports = {
 
   async execute(interaction) {
     const staffRoleId = process.env.STAFF_ROLE_ID;
-    const isStaff = staffRoleId && interaction.member.roles.cache.has(staffRoleId);
+    const adminRoleId = process.env.ADMIN_ROLE_ID;
 
-    if (!isStaff) {
+    await interaction.guild.roles.fetch();
+    await interaction.guild.members.fetch(interaction.user.id);
+
+    const isGuildOwner = interaction.guild.ownerId === interaction.user.id;
+    const isStaff = staffRoleId && interaction.member.roles.cache.has(staffRoleId);
+    const isAdmin = adminRoleId && interaction.member.roles.cache.has(adminRoleId);
+
+    if (!isGuildOwner && !isStaff && !isAdmin) {
       return interaction.reply({ content: '❌ Only staff can use this command.', ephemeral: true });
     }
 
