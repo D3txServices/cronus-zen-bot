@@ -3,7 +3,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, ButtonBuilder, ButtonStyle, Ac
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('panel')
-    .setDescription('Send the Cronus Zen support panel with ticket button')
+    .setDescription('Send the Cronus Zen support panel')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction) {
@@ -22,21 +22,30 @@ module.exports = {
     await interaction.channel.send({
       embeds: [{
         color: 0x00b4d8,
-        title: '🎮 Cronus Zen Support',
+        title: '🎮 Cronus Zen — Support Center',
         description: [
-          '**Welcome to the Cronus Zen Support Center!**',
-          '',
-          'Our AI assistant is available **24/7** to help you with:',
-          '',
-          '🔧 **Device Setup** — USB, Bluetooth, console connection',
-          '📦 **GamePacks** — Installation and configuration',
-          '📜 **Scripts & Values** — Anti-recoil, rapid fire, macros',
-          '🛠️ **Troubleshooting** — Fixing common issues',
+          '**Need help with your Cronus Zen? We got you covered!**',
           '',
           'Click the button below to open a **private support ticket**.',
-          'Your conversation is only visible to you and staff.',
+          'Your ticket is only visible to you and staff.',
+          '',
+          '─────────────────────────────',
+          '',
+          '🤖 **AI Support** *(Instant — 24/7)*',
+          '> Our AI assistant responds immediately to your messages.',
+          '> Setup help, scripts, values, troubleshooting & more.',
+          '',
+          '👤 **Human Support** *(Staff check in regularly)*',
+          '> A real staff member will review your ticket.',
+          '> Complex issues, script requests, or anything the AI can\'t solve.',
+          '',
+          '─────────────────────────────',
+          '',
+          '📋 **What we help with:**',
+          '`Device Setup` `GamePacks` `GPC Scripts` `Anti-Recoil`',
+          '`Connection Issues` `Script Values` `Troubleshooting`',
         ].join('\n'),
-        footer: { text: 'Powered by Cronus Zen AI Support Bot • Available 24/7' },
+        footer: { text: 'Cronus Zen Support Bot • AI + Human Support • 24/7' },
         timestamp: new Date().toISOString(),
       }],
       components: [row],
