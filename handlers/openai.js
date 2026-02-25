@@ -4,6 +4,7 @@ const path = require('path');
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const ZEN_KNOWLEDGE = require('../data/knowledge');
+const RECOIL_VALUES = require('../data/recoil_values');
 const conversationHistory = new Map();
 
 function getFAQ() {
@@ -231,7 +232,9 @@ ${faqText || 'No entries yet.'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${scriptText || 'No custom scripts added yet.'}
 
-${ZEN_KNOWLEDGE}`;
+${ZEN_KNOWLEDGE}
+
+${RECOIL_VALUES}`;
 }
 
 async function askOpenAI(userId, userMessage) {
