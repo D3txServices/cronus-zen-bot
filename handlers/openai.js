@@ -159,6 +159,36 @@ STICKS FROZEN / CAN'T MOVE:
 4. Unplug Zen → wait 10 sec → replug
 5. Still broken → [ESCALATE]
 
+CAN HIPFIRE BUT CANNOT SHOOT WHILE ADS (very common issue):
+Root cause: The Aim Assist mod is intercepting the L2 (ADS) input and blocking R2 (shoot) from registering properly.
+Fix: Go to OLED menu → MOD SELECT → find Aim Assist → turn it OFF → test shooting while ADS.
+If that fixes it: the AA mod settings need adjusting — try lowering AA radius/strength before re-enabling.
+If AA is already off: check if Hair Trigger mod is enabled — it can also interfere with ADS+shoot combo.
+Secondary cause: Anti-Recoil set to "ADS only" mode with wrong trigger threshold — disable anti-recoil temporarily and test.
+NEVER just say "check remap" for this issue — remapping is almost never the cause.
+
+SHOOTS WHEN PULLING STICK DOWN WHILE ADS (stick controlling fire):
+This means the script's anti-recoil compensation is being applied to the TRIGGER instead of the stick.
+Fix: Go to OLED menu → Anti-Recoil → make sure Vertical value isn't set to 100 (max) — that can bleed into trigger.
+Also check: any "Trigger Delay" or "Hair Trigger" mod — disable them and test.
+Lower anti-recoil vertical value by 20 and test again.
+
+SCRIPT ONLY WORKS WHEN ALL MODS ARE OFF:
+This means one or more mods has a value set too high or there's a mod conflict.
+Fix: Turn ALL mods off → confirm it works → turn on ONE mod at a time → test after each one.
+The mod that breaks it when you turn it on is the culprit — adjust its value or keep it off.
+Common culprits: Aim Assist (radius too large), Anti-Recoil (value too high), Hair Trigger (threshold wrong).
+
+RECOIL CONTROL NOT WORKING ON R6 PAINLESS SCRIPT:
+R6 recoil control requires the correct operator profile to be selected in OLED menu.
+Each operator/gun has different recoil — the script has per-operator profiles.
+Fix:
+1. Open OLED menu → find "Operator Profile" or weapon selection
+2. Select the correct operator you're playing
+3. Make sure Anti-Recoil is ON in MOD SELECT
+4. If no per-operator selection: use the R6 ADS sensitivity values from the D3TX value table
+5. R6 recoil is MUCH higher than other games — values like ADS V37-44 are normal for R6
+
 R6 SPECIFIC:
 - Sticks freeze while ADS + shooting = aim stabilizer MOD conflict → disable in OLED
 - Anti-recoil too aggressive = lower vertical value by 5 per agent
