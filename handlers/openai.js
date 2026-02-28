@@ -353,22 +353,112 @@ ${ZEN_KNOWLEDGE}
 ${RECOIL_VALUES}`;
 }
 
+// ─── Learned files knowledge base ───────────────────────────────────────────
+const LEARNED_FILES_PATH = path.join(__dirname, '../data/learned_files.json');
+
+function getLearnedFiles() {
+  try {
+    return JSON.parse(fs.readFileSync(LEARNED_FILES_PATH, 'utf8'));
+  } catch { return []; }
+}
+
+function saveLearnedFile(filename, content) {
+  const files = getLearnedFiles();
+  const existing = files.findIndex(f => f.filename === filename);
+  const entry = { filename, content, addedAt: new Date().toISOString() };
+  if (existing >= 0) files[existing] = entry;
+  else files.push(entry);
+  fs.writeFileSync(LEARNED_FILES_PATH, JSON.stringify(files, null, 2));
+}
+
+function buildLearnedFilesText() {
+  const files = getLearnedFiles();
+  if (!files.length) return '';
+  return `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📚 LEARNED FROM UPLOADED FILES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` + files.map(f =>
+    `[${f.filename}]\n${f.content}`
+  ).join('\n\n');
+}
+
+// ─── Needs web search detection ─────────────────────────────────────────────
+function needsWebSearch(message) {
+  const triggers = [
+    /new (patch|update|season|operator|agent|weapon|gun|map)/i,
+    /latest (patch|update|season)/i,
+    /just (released|dropped|came out|updated)/i,
+    /still (work|working|detected|undetected)/i,
+    /patch notes/i,
+    /season \d/i,
+    /banned.*(new|update|patch)/i,
+    /does.*(still|now).*(work|work)/i,
+    /currently (detected|banned|working)/i,
+    /ricochet update/i,
+  ];
+  return triggers.some(r => r.test(message));
+}
+
+// ─── Web search via OpenAI built-in tool ────────────────────────────────────
+async function searchWeb(query) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-5-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a search assistant. Search for the query and return a brief factual summary of the most relevant results. Be concise — 3-5 sentences max. Focus on facts relevant to Cronus Zen, gaming scripts, and anti-cheat.'
+        },
+        { role: 'user', content: `Search for: ${query}` }
+      ],
+      tools: [{ type: 'web_search_preview' }],
+      tool_choice: 'required',
+      max_tokens: 400,
+    });
+
+    // Extract text from response
+    const msg = response.choices[0].message;
+    if (msg.content) return msg.content;
+
+    // If tool call result
+    const toolResults = response.choices[0]?.message?.tool_calls;
+    if (toolResults) return 'Web search results retrieved.';
+
+    return null;
+  } catch (err) {
+    console.error('Web search error:', err.message);
+    return null;
+  }
+}
+
+// ─── Main AI function ────────────────────────────────────────────────────────
 async function askOpenAI(userId, userMessage) {
   if (!conversationHistory.has(userId)) {
     conversationHistory.set(userId, []);
   }
   const history = conversationHistory.get(userId);
-  if (history.length > 14) history.splice(0, history.length - 14);
+  if (history.length > 20) history.splice(0, history.length - 20);
+
+  // Check if web search needed
+  let webContext = '';
+  if (needsWebSearch(userMessage)) {
+    const searchResult = await searchWeb(userMessage);
+    if (searchResult) {
+      webContext = `\n\n[LIVE WEB SEARCH RESULT — Use this for current info]\n${searchResult}\n[END WEB SEARCH]`;
+    }
+  }
+
+  // Build full system prompt with learned files + optional web context
+  const systemPrompt = buildSystemPrompt() + buildLearnedFilesText() + webContext;
 
   history.push({ role: 'user', content: userMessage });
 
   const response = await openai.chat.completions.create({
     model: 'gpt-5-mini',
     messages: [
-      { role: 'system', content: buildSystemPrompt() },
+      { role: 'system', content: systemPrompt },
       ...history,
     ],
-    max_tokens: 800,
+    max_tokens: 1000,
     temperature: 0.65,
   });
 
@@ -381,4 +471,4 @@ function clearHistory(userId) {
   conversationHistory.delete(userId);
 }
 
-module.exports = { askOpenAI, clearHistory };
+module.exports = { askOpenAI, clearHistory, saveLearnedFile, getLearnedFiles };
