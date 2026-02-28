@@ -42,15 +42,37 @@ module.exports = {
     try {
       const reply = await askOpenAI(message.author.id, message.content);
 
+      // ── Helper: send long messages in chunks ───────────────
+      async function sendInChunks(channel, text, replyToMsg = null) {
+        const MAX = 1900;
+        if (text.length <= MAX) {
+          if (replyToMsg) return replyToMsg.reply(text);
+          return channel.send(text);
+        }
+        const chunks = [];
+        let current = '';
+        for (const line of text.split('\n')) {
+          if ((current + '\n' + line).length > MAX) {
+            if (current) chunks.push(current.trim());
+            current = line;
+          } else {
+            current = current ? current + '\n' + line : line;
+          }
+        }
+        if (current) chunks.push(current.trim());
+        for (let i = 0; i < chunks.length; i++) {
+          if (i === 0 && replyToMsg) await replyToMsg.reply(chunks[i]);
+          else await channel.send(chunks[i]);
+        }
+      }
+
       // ── Check if AI is escalating ──────────────────────────
       if (reply.includes('[ESCALATE]')) {
         const cleanReply = reply.replace('[ESCALATE]', '').trim();
         const ownerPing = await getOwnerPing(message.guild);
 
-        // Send AI's message without the tag
-        await message.reply(cleanReply);
+        await sendInChunks(message.channel, cleanReply, message);
 
-        // Ping owner separately so it notifies properly
         await message.channel.send({
           embeds: [{
             color: 0xff0000,
@@ -63,7 +85,7 @@ module.exports = {
         });
 
       } else {
-        await message.reply(reply);
+        await sendInChunks(message.channel, reply, message);
       }
 
     } catch (error) {
