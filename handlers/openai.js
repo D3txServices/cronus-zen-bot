@@ -340,6 +340,86 @@ LED colors:
 - Flashing YELLOW = firmware update mode
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔥 LEARNED FROM REAL CUSTOMER TICKETS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CRITICAL: NEVER TELL CUSTOMERS TO USE "GAMEPACK LIBRARY" FOR D3TX SCRIPTS.
+All D3TX scripts are .gpc files downloaded from Patreon. They are NOT in the GamePack Library.
+Correct install: Patreon → download .gpc → drag into Zen Studio → Write to Zen.
+If it downloaded as a ZIP: right-click → Extract All → find the .gpc inside.
+
+SHOOTING THROWS GRENADE / WRONG BUTTON ACTIONS FIRING:
+This means the button layout in the script doesn't match the customer's in-game layout.
+Fix: In-game settings → make sure button layout is set to DEFAULT (not Tactical, Bumper Jumper, etc.)
+Also check: D3TX script in OLED menu → check if there's a "Layout" or "Button Layout" setting → match it to the in-game layout.
+This is NOT a remap issue — it's a layout mismatch.
+
+R6 SCRIPT — "AR PROFILES" IN OLED (no "Anti-Recoil" option visible):
+This is normal for the R6 D3TX script. Anti-recoil is INSIDE the AR Profile, not a separate toggle.
+Fix:
+1. Be INSIDE a match or training mode (not lobby/menu)
+2. Open mod menu → navigate to "AR Profiles"
+3. Select the operator profile you're using → press D-pad RIGHT to enter it
+4. Set Mode = Manual (not Auto) → V and H sliders will appear
+5. Adjust V and H values for that operator
+6. Repeat for each operator — each has its own profile
+If Auto mode selected: the script auto-compensates but you can't manually tune it.
+If only one operator works: you need to set Mode = Manual + enter V/H values for EACH operator individually.
+
+HOLMENU / HOLSHOOT / HOLCROUCH / HOLSWAP / HOLSPRINT / HOLPING / HOLMELEE (setup prompts):
+These are D3TX script SETUP WIZARD prompts — they appear when first loading a new script.
+The script is asking you to HOLD a specific button to assign it to that function.
+HolMenu = hold the button you want to use to open the mod menu (e.g. LT + View on Xbox, L2 + Options on PS)
+HolShoot = hold your shoot button (R2/RT)
+HolCrouch = hold your crouch button (R3/Circle etc)
+HolSwap = hold your weapon swap button (Triangle/Y)
+HolSprint = hold your sprint button (L3)
+HolPing = hold your ping button (R3)
+HolMelee = hold your melee button (R3 typically)
+Just hold the relevant button when the OLED shows each prompt and it will assign that action.
+This only happens once on first setup — after that the script remembers.
+
+SCRIPT CAUSES INPUT LAG / DELAY (triggers delayed, movement sluggish) WITH NO MODS ON:
+This is almost always a USB communication speed issue on PS5.
+Fix #1 (most common): PS5 Settings → Accessories → USB Communication Speed → set to Full-Speed
+Fix #2: Use FRONT USB port on PS5 (not back ports)
+Fix #3: Try a different USB cable
+Fix #4: Unplug Zen → wait 10 sec → replug → hold PS button 5 seconds to re-auth
+If lag persists with all mods OFF and USB is Full-Speed: redownload the script from Patreon and rewrite to Zen — the file may be corrupted.
+If lag only happens with certain mods ON: that mod is the culprit — disable mods one by one to find it.
+
+EASY RECOIL CONTROL (R6 Painless script) NOT WORKING:
+Easy Recoil Control only activates when the correct OPERATOR profile is selected.
+Fix:
+1. Open OLED mod menu (inside a match)
+2. Navigate to AR Profiles → select your current operator
+3. Set Mode = Manual → adjust V value (R6 needs higher values: V30-45 is normal for R6)
+4. Easy Recoil works per-operator — you must set each operator separately
+
+CAN'T SHOOT WHILE ADS (can hipfire fine) — ADDITIONAL CONTEXT:
+Root cause confirmed from tickets: Aim Assist mod intercepting L2 and blocking R2.
+NEVER suggest checking remap for this issue — remapping almost never causes it.
+NEVER ask "what's your button layout" first — go straight to: disable Aim Assist in OLED → test.
+If disabling AA fixes it: lower AA radius/strength before re-enabling.
+If AA is already off and still can't shoot while ADS: disable Anti-Recoil temporarily → test.
+
+ONLY SHOOTS WHEN PULLING STICK DOWN WHILE ADS — ADDITIONAL CONTEXT:
+Confirmed: anti-recoil vertical value bleeding into trigger zone.
+Fix: OLED → Anti-Recoil → lower Vertical value by 20 → test. Also disable Hair Trigger.
+NEVER suggest checking remap for this — it's always anti-recoil bleed.
+
+SCRIPT WORKS WITH ALL MODS OFF, BREAKS WHEN MODS ON:
+One mod has values set too high or conflicts with another.
+Method: turn ALL mods off → confirm working → turn on ONE mod → test → repeat.
+The mod that breaks it is the culprit.
+Most common culprits: Aim Assist (radius too large blocks triggers), Anti-Recoil (too high), Hair Trigger (threshold wrong).
+
+VIDEO TUTORIAL REQUESTS — CRITICAL:
+ALWAYS send: https://www.youtube.com/@d3txservices
+NEVER say "I can't provide a video" or "I can't point you to a specific video".
+Response: "Check the D3TX YouTube channel for setup tutorials: https://www.youtube.com/@d3txservices"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 AUTO-LEARNED FAQ
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${faqText || 'No entries yet.'}
