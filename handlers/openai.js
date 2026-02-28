@@ -408,36 +408,49 @@ function needsWebSearch(message) {
   return triggers.some(r => r.test(message));
 }
 
-// ─── Web search via OpenAI built-in tool ────────────────────────────────────
+// ─── Web search via Responses API (GPT-5 mini native) ───────────────────────
 async function searchWeb(query) {
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openai.responses.create({
       model: 'gpt-5-mini-2025-08-07',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a search assistant. Search for the query and return a brief factual summary of the most relevant results. Be concise — 3-5 sentences max. Focus on facts relevant to Cronus Zen, gaming scripts, and anti-cheat.'
-        },
-        { role: 'user', content: `Search for: ${query}` }
-      ],
       tools: [{ type: 'web_search_preview' }],
-      tool_choice: 'required',
-      max_tokens: 400,
+      input: `Search for: ${query}. Return a brief factual summary in 3-5 sentences. Focus on Cronus Zen, gaming scripts, and anti-cheat relevance.`,
+      max_output_tokens: 400,
     });
-
-    // Extract text from response
-    const msg = response.choices[0].message;
-    if (msg.content) return msg.content;
-
-    // If tool call result
-    const toolResults = response.choices[0]?.message?.tool_calls;
-    if (toolResults) return 'Web search results retrieved.';
-
-    return null;
+    return response.output_text || null;
   } catch (err) {
     console.error('Web search error:', err.message);
     return null;
   }
+}
+
+// ─── GPT-5 mini via Responses API ───────────────────────────────────────────
+async function askGPT5Mini(systemPrompt, history) {
+  const input = [
+    { role: 'system', content: systemPrompt },
+    ...history,
+  ];
+  const response = await openai.responses.create({
+    model: 'gpt-5-mini-2025-08-07',
+    input,
+    max_output_tokens: 1000,
+    temperature: 0.65,
+  });
+  return response.output_text;
+}
+
+// ─── GPT-4o mini via Chat Completions API (stable fallback) ─────────────────
+async function askGPT4oMini(systemPrompt, history) {
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...history,
+    ],
+    max_tokens: 1000,
+    temperature: 0.65,
+  });
+  return response.choices[0].message.content;
 }
 
 // ─── Main AI function ────────────────────────────────────────────────────────
@@ -448,7 +461,7 @@ async function askOpenAI(userId, userMessage) {
   const history = conversationHistory.get(userId);
   if (history.length > 20) history.splice(0, history.length - 20);
 
-  // Check if web search needed (non-blocking — if it fails, continue without it)
+  // Web search (non-blocking)
   let webContext = '';
   try {
     if (needsWebSearch(userMessage)) {
@@ -461,42 +474,36 @@ async function askOpenAI(userId, userMessage) {
     console.error('Web search failed (non-fatal):', searchErr.message);
   }
 
-  // Build full system prompt with learned files + optional web context
   const systemPrompt = buildSystemPrompt() + buildLearnedFilesText() + webContext;
-
   history.push({ role: 'user', content: userMessage });
 
-  // Try primary model, fallback to gpt-4o-mini if it fails
-  const MODELS = ['gpt-5-mini-2025-08-07', 'gpt-4o-mini'];
-  let lastError = null;
+  let reply = null;
 
-  for (const model of MODELS) {
+  // Try GPT-5 mini first (Responses API)
+  try {
+    reply = await askGPT5Mini(systemPrompt, history);
+    console.log('✅ GPT-5 mini responded');
+  } catch (err) {
+    console.error('GPT-5 mini failed, falling back to gpt-4o-mini:', err.message);
+  }
+
+  // Fallback to gpt-4o-mini (Chat Completions API)
+  if (!reply) {
     try {
-      const response = await openai.chat.completions.create({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...history,
-        ],
-        max_tokens: 1000,
-        temperature: 0.65,
-      });
-
-      const reply = response.choices[0].message.content;
-      history.push({ role: 'assistant', content: reply });
-      return reply;
+      reply = await askGPT4oMini(systemPrompt, history);
+      console.log('✅ gpt-4o-mini fallback responded');
     } catch (err) {
-      console.error(`Model ${model} failed:`, err.message);
-      lastError = err;
-      // Try next model in fallback chain
+      console.error('gpt-4o-mini also failed:', err.message);
     }
   }
 
-  // All models failed — return a helpful message instead of crashing
-  console.error('All models failed:', lastError?.message);
-  const fallback = "Hey! I'm having a quick technical issue right now. Can you tell me what's going on with your script and I'll get you sorted — or I can get the owner to jump in if needed!";
-  history.push({ role: 'assistant', content: fallback });
-  return fallback;
+  // Last resort message
+  if (!reply) {
+    reply = "Hey! I'm having a quick technical issue right now. Can you tell me what's going on with your script and I'll get you sorted — or I can get the owner to jump in if needed!";
+  }
+
+  history.push({ role: 'assistant', content: reply });
+  return reply;
 }
 
 function clearHistory(userId) {
