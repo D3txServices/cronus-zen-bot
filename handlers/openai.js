@@ -434,7 +434,6 @@ async function askGPT5Mini(systemPrompt, history) {
     model: 'gpt-5-mini-2025-08-07',
     input,
     max_output_tokens: 1000,
-    temperature: 0.65,
   });
   return response.output_text;
 }
