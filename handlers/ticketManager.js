@@ -501,7 +501,7 @@ function initInactivityTracker(client) {
           const openerId = channel.topic;
 
           // 30 minute ping
-          if (minsSinceActivity >= 30 && !data.pinged30) {
+          if (minsSinceActivity >= 4320 && !data.pinged30) {
             inactivityMap.set(channelId, { ...data, pinged30: true });
             try {
               const member = await guild.members.fetch(openerId);
