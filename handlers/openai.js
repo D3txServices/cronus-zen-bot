@@ -467,7 +467,7 @@ async function askOpenAI(userId, userMessage) {
   history.push({ role: 'user', content: userMessage });
 
   // Try primary model, fallback to gpt-4o-mini if it fails
-  const MODELS = ['gpt-5-mini-2025-08-07'];
+  const MODELS = ['gpt-5-mini-2025-08-07', 'gpt-4o-mini'];
   let lastError = null;
 
   for (const model of MODELS) {
