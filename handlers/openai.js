@@ -435,7 +435,7 @@ async function askGPT5Mini(systemPrompt, history) {
       { role: 'system', content: systemPrompt },
       ...history,
     ],
-    max_completion_tokens: 1000,
+    max_completion_tokens: 2000,
   });
   return response.choices[0].message.content;
 }
