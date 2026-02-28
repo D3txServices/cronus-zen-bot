@@ -408,37 +408,39 @@ function needsWebSearch(message) {
   return triggers.some(r => r.test(message));
 }
 
-// ─── Web search via Responses API (GPT-5 mini native) ───────────────────────
+// ─── Web search (gpt-4o-mini with search tool) ──────────────────────────────
 async function searchWeb(query) {
   try {
-    const response = await openai.responses.create({
-      model: 'gpt-5-mini-2025-08-07',
-      tools: [{ type: 'web_search_preview' }],
-      input: `Search for: ${query}. Return a brief factual summary in 3-5 sentences. Focus on Cronus Zen, gaming scripts, and anti-cheat relevance.`,
-      max_output_tokens: 400,
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a search assistant. Return a brief factual summary in 3-5 sentences focused on gaming, Cronus Zen, scripts, and anti-cheat.' },
+        { role: 'user', content: `Search for and summarize: ${query}` }
+      ],
+      max_tokens: 400,
+      temperature: 0.3,
     });
-    return response.output_text || null;
+    return response.choices[0].message.content || null;
   } catch (err) {
     console.error('Web search error:', err.message);
     return null;
   }
 }
 
-// ─── GPT-5 mini via Responses API ───────────────────────────────────────────
+// ─── GPT-5 mini via chat.completions (v4 SDK compatible, no temperature) ────
 async function askGPT5Mini(systemPrompt, history) {
-  const input = [
-    { role: 'system', content: systemPrompt },
-    ...history,
-  ];
-  const response = await openai.responses.create({
+  const response = await openai.chat.completions.create({
     model: 'gpt-5-mini-2025-08-07',
-    input,
-    max_output_tokens: 1000,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      ...history,
+    ],
+    max_tokens: 1000,
   });
-  return response.output_text;
+  return response.choices[0].message.content;
 }
 
-// ─── GPT-4o mini via Chat Completions API (stable fallback) ─────────────────
+// ─── GPT-4o mini fallback ────────────────────────────────────────────────────
 async function askGPT4oMini(systemPrompt, history) {
   const response = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
