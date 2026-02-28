@@ -37,6 +37,9 @@ module.exports = {
     }
     cooldowns.set(message.author.id, now + 3000);
 
+    // Track activity for inactivity timer
+    if (!message.author.bot) updateLastUserMessage(message.channel.id);
+
     message.channel.sendTyping();
 
     try {
