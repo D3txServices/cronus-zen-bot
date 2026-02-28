@@ -402,7 +402,7 @@ function needsWebSearch(message) {
 async function searchWeb(query) {
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-5-mini-2025-08-07',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -438,13 +438,17 @@ async function askOpenAI(userId, userMessage) {
   const history = conversationHistory.get(userId);
   if (history.length > 20) history.splice(0, history.length - 20);
 
-  // Check if web search needed
+  // Check if web search needed (non-blocking — if it fails, continue without it)
   let webContext = '';
-  if (needsWebSearch(userMessage)) {
-    const searchResult = await searchWeb(userMessage);
-    if (searchResult) {
-      webContext = `\n\n[LIVE WEB SEARCH RESULT — Use this for current info]\n${searchResult}\n[END WEB SEARCH]`;
+  try {
+    if (needsWebSearch(userMessage)) {
+      const searchResult = await searchWeb(userMessage);
+      if (searchResult) {
+        webContext = `\n\n[LIVE WEB SEARCH RESULT — Use this for current info]\n${searchResult}\n[END WEB SEARCH]`;
+      }
     }
+  } catch (searchErr) {
+    console.error('Web search failed (non-fatal):', searchErr.message);
   }
 
   // Build full system prompt with learned files + optional web context
@@ -452,19 +456,37 @@ async function askOpenAI(userId, userMessage) {
 
   history.push({ role: 'user', content: userMessage });
 
-  const response = await openai.chat.completions.create({
-    model: 'gpt-5-mini-2025-08-07',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      ...history,
-    ],
-    max_tokens: 1000,
-    temperature: 0.65,
-  });
+  // Try primary model, fallback to gpt-4o-mini if it fails
+  const MODELS = ['gpt-4o-mini', 'gpt-4o-mini'];
+  let lastError = null;
 
-  const reply = response.choices[0].message.content;
-  history.push({ role: 'assistant', content: reply });
-  return reply;
+  for (const model of MODELS) {
+    try {
+      const response = await openai.chat.completions.create({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...history,
+        ],
+        max_tokens: 1000,
+        temperature: 0.65,
+      });
+
+      const reply = response.choices[0].message.content;
+      history.push({ role: 'assistant', content: reply });
+      return reply;
+    } catch (err) {
+      console.error(`Model ${model} failed:`, err.message);
+      lastError = err;
+      // Try next model in fallback chain
+    }
+  }
+
+  // All models failed — return a helpful message instead of crashing
+  console.error('All models failed:', lastError?.message);
+  const fallback = "Hey! I'm having a quick technical issue right now. Can you tell me what's going on with your script and I'll get you sorted — or I can get the owner to jump in if needed!";
+  history.push({ role: 'assistant', content: fallback });
+  return fallback;
 }
 
 function clearHistory(userId) {
