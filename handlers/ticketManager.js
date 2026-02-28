@@ -512,7 +512,7 @@ function initInactivityTracker(client) {
           }
 
           // 24 hour auto-close
-          if (minsSinceActivity >= 1440) {
+          if (minsSinceActivity >= 4320) {
             inactivityMap.delete(channelId);
             try {
               await channel.send('⏰ This ticket has been automatically closed due to 24 hours of inactivity.');
