@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const { generateTranscript } = require('../handlers/ticketManager');
 
 module.exports = {
@@ -14,7 +14,7 @@ module.exports = {
     const adminRoleId = process.env.ADMIN_ROLE_ID;
 
     if (!channel.name.startsWith('ticket-')) {
-      return interaction.reply({ content: '❌ This command only works inside a ticket channel.', ephemeral: true });
+      return interaction.reply({ content: '❌ This command only works inside a ticket channel.', flags: 64 });
     }
 
     const isOwner = guild.ownerId === interaction.user.id;
@@ -23,17 +23,18 @@ module.exports = {
     const isTicketOwner = channel.topic === interaction.user.id;
 
     if (!isOwner && !isStaff && !isAdmin && !isTicketOwner) {
-      return interaction.reply({ content: '❌ You do not have permission to get this transcript.', ephemeral: true });
+      return interaction.reply({ content: '❌ You do not have permission to get this transcript.', flags: 64 });
     }
 
-    await interaction.reply({ content: '📋 Generating transcript...', ephemeral: true });
+    // Defer first to prevent timeout
+    await interaction.deferReply({ flags: 64 });
 
     try {
       const transcriptChannel = await generateTranscript(channel, guild, interaction.user.tag);
       await interaction.editReply({ content: `✅ Transcript saved to ${transcriptChannel}!` });
     } catch (err) {
       console.error('Transcript error:', err);
-      await interaction.editReply({ content: '❌ Failed to generate transcript.' });
+      await interaction.editReply({ content: '❌ Failed to generate transcript: ' + err.message });
     }
   },
 };
