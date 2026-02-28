@@ -382,4 +382,152 @@ async function handleRatingReaction(reaction, user) {
   }
 }
 
-module.exports = { createTicket, closeTicket, handleRatingReaction };
+// ─── Generate transcript without closing ─────────────────────────────────────
+async function generateTranscript(channel, guild, requestedBy = null) {
+  const staffRoleId = process.env.STAFF_ROLE_ID;
+  const openerId = channel.topic;
+  let opener = null;
+  try { opener = await guild.members.fetch(openerId); } catch {}
+
+  const fetched = await channel.messages.fetch({ limit: 100 });
+  const sorted = [...fetched.values()].reverse();
+  const ticketName = channel.name;
+  const generatedAt = new Date().toLocaleString('en-US', { timeZone: 'UTC' });
+
+  const lines = [
+    `╔══════════════════════════════════════════════╗`,
+    `        Cronus Zen Support — Ticket Transcript  `,
+    `╚══════════════════════════════════════════════╝`,
+    `Ticket   : ${ticketName}`,
+    `Opened By: ${opener?.user.tag ?? openerId}`,
+    `Generated: ${generatedAt} UTC`,
+    `Status   : 🟢 OPEN`,
+    `Messages : ${sorted.length}`,
+    `${'─'.repeat(50)}`,
+    '',
+  ];
+
+  for (const m of sorted) {
+    const time = m.createdAt.toLocaleString('en-US', { timeZone: 'UTC' });
+    if (m.content) {
+      lines.push(`[${time}] ${m.author.tag}: ${m.content}`);
+    } else if (m.embeds[0]?.description) {
+      lines.push(`[${time}] [EMBED] ${m.author.tag}: ${m.embeds[0].description}`);
+    }
+  }
+
+  lines.push('', `${'─'.repeat(50)}`, `End of Transcript — ${ticketName} (ticket still open)`);
+  const transcriptText = lines.join('\n');
+  const tmpPath = path.join('/tmp', `${ticketName}-live.txt`);
+  fs.writeFileSync(tmpPath, transcriptText, 'utf8');
+  const attachment = new AttachmentBuilder(tmpPath, { name: `${ticketName}-transcript.txt` });
+
+  // Find or create transcripts channel
+  let transcriptChannel = guild.channels.cache.find(
+    c => c.name === 'transcripts' && c.type === ChannelType.GuildText
+  );
+  if (!transcriptChannel) {
+    transcriptChannel = await guild.channels.create({
+      name: 'transcripts',
+      type: ChannelType.GuildText,
+      permissionOverwrites: [
+        { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+        ...(staffRoleId ? [{ id: staffRoleId, allow: [PermissionFlagsBits.ViewChannel] }] : []),
+      ],
+    });
+  }
+
+  await transcriptChannel.send({
+    embeds: [{
+      color: 0x00b4d8,
+      title: `📋 Live Transcript — ${ticketName}`,
+      fields: [
+        { name: 'Opened By', value: opener?.user.tag ?? openerId, inline: true },
+        { name: 'Requested By', value: requestedBy ?? 'System', inline: true },
+        { name: 'Messages', value: `${sorted.length}`, inline: true },
+        { name: 'Status', value: '🟢 Ticket Still Open', inline: false },
+        { name: 'Generated At', value: `${generatedAt} UTC`, inline: false },
+      ],
+      footer: { text: 'Full transcript attached as .txt file' },
+      timestamp: new Date().toISOString(),
+    }],
+    files: [attachment],
+  });
+
+  try { fs.unlinkSync(tmpPath); } catch {}
+  return transcriptChannel;
+}
+
+// ─── Inactivity tracking ──────────────────────────────────────────────────────
+// Map of channelId -> { lastUserMessage: Date, pinged30: bool }
+const inactivityMap = new Map();
+
+function updateLastUserMessage(channelId) {
+  const existing = inactivityMap.get(channelId) || { pinged30: false };
+  inactivityMap.set(channelId, {
+    ...existing,
+    lastUserMessage: new Date(),
+    pinged30: false, // reset 30min ping if they respond
+  });
+}
+
+function initInactivityTracker(client) {
+  // Check every 5 minutes
+  setInterval(async () => {
+    const now = Date.now();
+
+    for (const [guildId, guild] of client.guilds.cache) {
+      const ticketChannels = guild.channels.cache.filter(
+        c => c.name?.startsWith('ticket-') && c.type === ChannelType.GuildText
+      );
+
+      for (const [channelId, channel] of ticketChannels) {
+        try {
+          const data = inactivityMap.get(channelId);
+          if (!data?.lastUserMessage) {
+            // No tracking data yet — fetch last message to init
+            const msgs = await channel.messages.fetch({ limit: 10 });
+            const lastUserMsg = [...msgs.values()].find(m => !m.author.bot);
+            if (lastUserMsg) {
+              inactivityMap.set(channelId, {
+                lastUserMessage: lastUserMsg.createdAt,
+                pinged30: false,
+              });
+            }
+            continue;
+          }
+
+          const minsSinceActivity = (now - data.lastUserMessage.getTime()) / 60000;
+          const openerId = channel.topic;
+
+          // 30 minute ping
+          if (minsSinceActivity >= 30 && !data.pinged30) {
+            inactivityMap.set(channelId, { ...data, pinged30: true });
+            try {
+              const member = await guild.members.fetch(openerId);
+              await channel.send({
+                content: `Hey ${member} — are you still there? Let us know if you still need help or we'll close this ticket automatically in 24 hours if there's no response.`,
+              });
+            } catch {}
+          }
+
+          // 24 hour auto-close
+          if (minsSinceActivity >= 1440) {
+            inactivityMap.delete(channelId);
+            try {
+              await channel.send('⏰ This ticket has been automatically closed due to 24 hours of inactivity.');
+              // Generate transcript before closing
+              await generateTranscript(channel, guild, 'Auto-Close (24hr inactivity)');
+              await learnFromTicket([...(await channel.messages.fetch({ limit: 100 })).values()].reverse());
+              await channel.delete();
+            } catch (err) {
+              console.error('Auto-close error:', err.message);
+            }
+          }
+        } catch {}
+      }
+    }
+  }, 5 * 60 * 1000); // every 5 mins
+}
+
+module.exports = { createTicket, closeTicket, handleRatingReaction, generateTranscript, updateLastUserMessage, initInactivityTracker };
