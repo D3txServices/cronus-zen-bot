@@ -385,7 +385,7 @@ function buildLearnedFilesText() {
 function needsWebSearch(message) {
   const triggers = [
     /new (patch|update|season|operator|agent|weapon|gun|map)/i,
-    /latest (patch|update|season)/i,
+    /latest (patch|update|season|news)/i,
     /just (released|dropped|came out|updated)/i,
     /still (work|working|detected|undetected)/i,
     /patch notes/i,
@@ -394,6 +394,16 @@ function needsWebSearch(message) {
     /does.*(still|now).*(work|work)/i,
     /currently (detected|banned|working)/i,
     /ricochet update/i,
+    // Explicit search requests
+    /search (web|online|google|internet)/i,
+    /search for/i,
+    /look up/i,
+    /look online/i,
+    // Game update queries
+    /latest.*(cod|warzone|bo6|apex|r6|fortnite|pubg|battlefield)/i,
+    /(cod|warzone|bo6|apex|r6|fortnite|pubg|battlefield).*(update|patch|news)/i,
+    /what.*(changed|new|updated)/i,
+    /any.*(update|patch|news)/i,
   ];
   return triggers.some(r => r.test(message));
 }
