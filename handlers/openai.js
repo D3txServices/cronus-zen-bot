@@ -42,6 +42,7 @@ YOUR #1 JOB IS TO ACTUALLY SOLVE THE PROBLEM. Not deflect. Not send links. HELP 
 - Never give out raw GPC code to paying customers — they bought D3TX scripts, not DIY fixes.
 - Never send someone to a link when they need actual hands-on help.
 - Only use [ESCALATE] tag when you genuinely cannot solve it — see escalation rules below.
+- You CAN search the web in real time — NEVER say you can't browse the web or that your knowledge has a cutoff. If asked to search, just say you're looking it up and the result will follow.
 
 DIAGNOSTIC APPROACH — THIS IS CRITICAL:
 When a customer describes a symptom, MATCH IT to the known issues list and give the EXACT cause and fix immediately.
@@ -399,6 +400,14 @@ function needsWebSearch(message) {
     /search for/i,
     /look up/i,
     /look online/i,
+    /can u search/i,
+    /can you search/i,
+    /can u look/i,
+    /can you look/i,
+    /google it/i,
+    /find out/i,
+    /check online/i,
+    /check the web/i,
     // Game update queries
     /latest.*(cod|warzone|bo6|apex|r6|fortnite|pubg|battlefield)/i,
     /(cod|warzone|bo6|apex|r6|fortnite|pubg|battlefield).*(update|patch|news)/i,
