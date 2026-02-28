@@ -354,88 +354,6 @@ ${ZEN_KNOWLEDGE}
 ${RECOIL_VALUES}`;
 }
 
-// ─── Learned files knowledge base ───────────────────────────────────────────
-const LEARNED_FILES_PATH = path.join(__dirname, '../data/learned_files.json');
-
-function getLearnedFiles() {
-  try {
-    return JSON.parse(fs.readFileSync(LEARNED_FILES_PATH, 'utf8'));
-  } catch { return []; }
-}
-
-function saveLearnedFile(filename, content) {
-  const files = getLearnedFiles();
-  const existing = files.findIndex(f => f.filename === filename);
-  const entry = { filename, content, addedAt: new Date().toISOString() };
-  if (existing >= 0) files[existing] = entry;
-  else files.push(entry);
-  fs.writeFileSync(LEARNED_FILES_PATH, JSON.stringify(files, null, 2));
-}
-
-function buildLearnedFilesText() {
-  const files = getLearnedFiles();
-  if (!files.length) return '';
-  return `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📚 LEARNED FROM UPLOADED FILES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` + files.map(f =>
-    `[${f.filename}]\n${f.content}`
-  ).join('\n\n');
-}
-
-// ─── Needs web search detection ─────────────────────────────────────────────
-function needsWebSearch(message) {
-  const triggers = [
-    /new (patch|update|season|operator|agent|weapon|gun|map)/i,
-    /latest (patch|update|season|news)/i,
-    /just (released|dropped|came out|updated)/i,
-    /still (work|working|detected|undetected)/i,
-    /patch notes/i,
-    /season \d/i,
-    /banned.*(new|update|patch)/i,
-    /does.*(still|now).*(work|work)/i,
-    /currently (detected|banned|working)/i,
-    /ricochet update/i,
-    // Explicit search requests
-    /search (web|online|google|internet)/i,
-    /search for/i,
-    /look up/i,
-    /look online/i,
-    /can u search/i,
-    /can you search/i,
-    /can u look/i,
-    /can you look/i,
-    /google it/i,
-    /find out/i,
-    /check online/i,
-    /check the web/i,
-    // Game update queries
-    /latest.*(cod|warzone|bo6|apex|r6|fortnite|pubg|battlefield)/i,
-    /(cod|warzone|bo6|apex|r6|fortnite|pubg|battlefield).*(update|patch|news)/i,
-    /what.*(changed|new|updated)/i,
-    /any.*(update|patch|news)/i,
-  ];
-  return triggers.some(r => r.test(message));
-}
-
-// ─── Web search (gpt-4o-mini with search tool) ──────────────────────────────
-async function searchWeb(query) {
-  try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are a search assistant. Return a brief factual summary in 3-5 sentences focused on gaming, Cronus Zen, scripts, and anti-cheat.' },
-        { role: 'user', content: `Search for and summarize: ${query}` }
-      ],
-      max_tokens: 400,
-      temperature: 0.3,
-    });
-    return response.choices[0].message.content || null;
-  } catch (err) {
-    console.error('Web search error:', err.message);
-    return null;
-  }
-}
-
 // ─── GPT-5 mini via chat.completions (v4 SDK compatible, no temperature) ────
 async function askGPT5Mini(systemPrompt, history) {
   const response = await openai.chat.completions.create({
@@ -471,28 +389,15 @@ async function askOpenAI(userId, userMessage) {
   const history = conversationHistory.get(userId);
   if (history.length > 20) history.splice(0, history.length - 20);
 
-  // Web search (non-blocking)
-  let webContext = '';
-  try {
-    if (needsWebSearch(userMessage)) {
-      const searchResult = await searchWeb(userMessage);
-      if (searchResult) {
-        webContext = `\n\n[LIVE WEB SEARCH RESULT — Use this for current info]\n${searchResult}\n[END WEB SEARCH]`;
-      }
-    }
-  } catch (searchErr) {
-    console.error('Web search failed (non-fatal):', searchErr.message);
-  }
-
-  const systemPrompt = buildSystemPrompt() + buildLearnedFilesText() + webContext;
+  const systemPrompt = buildSystemPrompt();
   history.push({ role: 'user', content: userMessage });
 
   let reply = null;
 
-  // Try GPT-5 mini first (Responses API)
+  // Try GPT-5 mini first
   try {
     reply = await askGPT5Mini(systemPrompt, history);
-    console.log('✅ GPT-5 mini responded');
+    console.log('✅ Using GPT-5 mini');
   } catch (err) {
     console.error('GPT-5 mini failed, falling back to gpt-4o-mini:', err.message);
   }
@@ -520,4 +425,4 @@ function clearHistory(userId) {
   conversationHistory.delete(userId);
 }
 
-module.exports = { askOpenAI, clearHistory, saveLearnedFile, getLearnedFiles };
+module.exports = { askOpenAI, clearHistory };
