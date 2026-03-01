@@ -644,15 +644,12 @@ Based on this info, give them an immediate, specific fix for their issue. Don't 
     } else {
       const chunks = [];
       let current = '';
-      for (const line of aiReply.split('
-')) {
-        if ((current + '
-' + line).length > MAX) {
+      for (const line of aiReply.split('\n')) {
+        if ((current + '\n' + line).length > MAX) {
           if (current) chunks.push(current.trim());
           current = line;
         } else {
-          current = current ? current + '
-' + line : line;
+          current = current ? current + '\n' + line : line;
         }
       }
       if (current) chunks.push(current.trim());
