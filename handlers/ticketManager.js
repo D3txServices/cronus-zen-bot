@@ -15,17 +15,25 @@ const closingTickets = new Set();
 // Pending ratings: messageId -> { userId, ticketName, guildId }
 const pendingRatings = new Map();
 
-function getNextTicketNumber() {
+function getNextTicketNumber(type) {
   if (!fs.existsSync(counterPath)) {
-    fs.writeFileSync(counterPath, JSON.stringify({ count: 320 }));
+    fs.writeFileSync(counterPath, JSON.stringify({ support: 365, buy: 568 }));
   }
   const data = JSON.parse(fs.readFileSync(counterPath, 'utf8'));
-  const current = data.count;
-  fs.writeFileSync(counterPath, JSON.stringify({ count: current + 1 }));
+  // Migrate old format
+  if (data.count !== undefined) {
+    const migrated = { support: 365, buy: 568 };
+    fs.writeFileSync(counterPath, JSON.stringify(migrated));
+    return type === 'buy' ? migrated.buy : migrated.support;
+  }
+  const key = type === 'buy' ? 'buy' : 'support';
+  const current = data[key] || (type === 'buy' ? 568 : 365);
+  data[key] = current + 1;
+  fs.writeFileSync(counterPath, JSON.stringify(data));
   return current;
 }
 
-async function createTicket(interaction) {
+async function createTicket(interaction, type = 'support') {
   const guild = interaction.guild;
   const user = interaction.user;
   const categoryId = process.env.TICKET_CATEGORY_ID;
@@ -46,7 +54,9 @@ async function createTicket(interaction) {
     await guild.roles.fetch();
     await guild.members.fetch(user.id);
 
-    const ticketNumber = getNextTicketNumber();
+    const ticketNumber = getNextTicketNumber(type);
+    const prefix = type === 'buy' ? 'buy' : 'support';
+    const channelName = `${prefix}-${ticketNumber}`;
 
     const permissionOverwrites = [
       { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
@@ -64,7 +74,7 @@ async function createTicket(interaction) {
     }
 
     const ticketChannel = await guild.channels.create({
-      name: `ticket-${ticketNumber}`,
+      name: channelName,
       type: ChannelType.GuildText,
       parent: categoryId || null,
       topic: user.id,
@@ -78,17 +88,29 @@ async function createTicket(interaction) {
 
     const row = new ActionRowBuilder().addComponents(closeButton);
 
+    const isBuy = type === 'buy';
     await ticketChannel.send({
       embeds: [{
-        color: 0x00b4d8,
-        title: `🎫 Ticket #${ticketNumber}`,
-        description: [
-          `Hey ${user}, welcome to your support ticket!`,
+        color: isBuy ? 0x00c851 : 0x00b4d8,
+        title: isBuy ? `🛒 Buy Ticket #${ticketNumber}` : `🛠️ Support Ticket #${ticketNumber}`,
+        description: isBuy ? [
+          `Hey ${user}, thanks for your interest in D3TX Services!`,
+          '',
+          '🤖 **AI Assistant** is here to help you find the right script.',
+          '👤 **Staff** will also check in if needed.',
+          '',
+          'Tell us: **What game are you playing?** and **What platform?** (PS5/Xbox/PC)',
+          'We\'ll recommend the best script for you and get you the Patreon link!',
+          '',
+          'Click **🔒 Close Ticket** when done.',
+        ].join('\n') : [
+          `Hey ${user}, your support ticket is open!`,
           '',
           '🤖 **AI Assistant** is active — responds instantly 24/7.',
           '👤 **Staff** will also check in when available.',
           '',
-          'Describe your issue and we\'ll get you sorted!',
+          'Your info has been sent to the AI — it\'s already working on your issue!',
+          'Add any extra details and we\'ll get you sorted.',
           'Click **🔒 Close Ticket** when resolved.',
         ].join('\n'),
         fields: [
@@ -96,7 +118,7 @@ async function createTicket(interaction) {
           { name: 'Opened By', value: user.tag, inline: true },
           { name: 'Status', value: '🟢 Open', inline: true },
         ],
-        footer: { text: 'Powered by Cronus Zen Support Bot' },
+        footer: { text: 'D3TX Services Support' },
         timestamp: new Date().toISOString(),
       }],
       components: [row],
@@ -122,7 +144,7 @@ async function closeTicket(interaction) {
   const adminRoleId = process.env.ADMIN_ROLE_ID;
   const member = interaction.member;
 
-  if (!channel.name.startsWith('ticket-')) {
+  if (!channel.name.startsWith('ticket-') && !channel.name.startsWith('support-') && !channel.name.startsWith('buy-')) {
     return interaction.reply({ content: '❌ This is not a ticket channel.', ephemeral: true });
   }
 
@@ -478,7 +500,7 @@ function initInactivityTracker(client) {
 
     for (const [guildId, guild] of client.guilds.cache) {
       const ticketChannels = guild.channels.cache.filter(
-        c => c.name?.startsWith('ticket-') && c.type === ChannelType.GuildText
+        c => (c.name?.startsWith('ticket-') || c.name?.startsWith('support-') || c.name?.startsWith('buy-')) && c.type === ChannelType.GuildText
       );
 
       for (const [channelId, channel] of ticketChannels) {
@@ -501,7 +523,7 @@ function initInactivityTracker(client) {
           const openerId = channel.topic;
 
           // 30 minute ping
-          if (minsSinceActivity >= 4320 && !data.pinged30) {
+          if (minsSinceActivity >= 30 && !data.pinged30) {
             inactivityMap.set(channelId, { ...data, pinged30: true });
             try {
               const member = await guild.members.fetch(openerId);
@@ -530,4 +552,128 @@ function initInactivityTracker(client) {
   }, 5 * 60 * 1000); // every 5 mins
 }
 
-module.exports = { createTicket, closeTicket, handleRatingReaction, generateTranscript, updateLastUserMessage, initInactivityTracker };
+// ─── Support ticket with intake form data ────────────────────────────────────
+async function createSupportTicketWithIntake(interaction, intakeData) {
+  const guild = interaction.guild;
+  const user = interaction.user;
+  const categoryId = process.env.TICKET_CATEGORY_ID;
+  const staffRoleId = process.env.STAFF_ROLE_ID;
+
+  const existingChannel = guild.channels.cache.find(
+    c => (c.name.startsWith('support-') || c.name.startsWith('ticket-')) && c.topic === user.id
+  );
+
+  if (existingChannel) {
+    return interaction.reply({
+      content: `❌ You already have an open ticket: ${existingChannel}`,
+      ephemeral: true,
+    });
+  }
+
+  try {
+    await guild.roles.fetch();
+    await guild.members.fetch(user.id);
+
+    const ticketNumber = getNextTicketNumber('support');
+    const channelName = `support-${ticketNumber}`;
+
+    const permissionOverwrites = [
+      { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
+      { id: user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+    ];
+
+    if (staffRoleId) {
+      const staffRole = guild.roles.cache.get(staffRoleId);
+      if (staffRole) {
+        permissionOverwrites.push({
+          id: staffRole.id,
+          allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
+        });
+      }
+    }
+
+    const ticketChannel = await guild.channels.create({
+      name: channelName,
+      type: ChannelType.GuildText,
+      parent: categoryId || null,
+      topic: user.id,
+      permissionOverwrites,
+    });
+
+    const closeButton = new ButtonBuilder()
+      .setCustomId('close_ticket')
+      .setLabel('🔒 Close Ticket')
+      .setStyle(ButtonStyle.Danger);
+
+    const row = new ActionRowBuilder().addComponents(closeButton);
+
+    // Post intake summary embed
+    await ticketChannel.send({
+      embeds: [{
+        color: 0x00b4d8,
+        title: `🛠️ Support Ticket #${ticketNumber}`,
+        description: `Hey ${user}, your ticket is open! The AI has your info and is already working on your issue.`,
+        fields: [
+          { name: '🎮 Script', value: intakeData.script, inline: true },
+          { name: '📱 Device/Platform', value: intakeData.device, inline: true },
+          { name: '🎯 Game', value: intakeData.game, inline: true },
+          { name: '❓ Issue', value: intakeData.issue, inline: false },
+        ],
+        footer: { text: 'D3TX Services Support • AI is reviewing your issue now' },
+        timestamp: new Date().toISOString(),
+      }],
+      components: [row],
+    });
+
+    // Feed intake info to AI as first message so it can respond immediately
+    const { askOpenAI } = require('./openai');
+    const aiPrompt = `[INTAKE FORM — Customer just opened a support ticket]
+Script: ${intakeData.script}
+Device/Platform: ${intakeData.device}
+Game: ${intakeData.game}
+Issue: ${intakeData.issue}
+
+Based on this info, give them an immediate, specific fix for their issue. Don't ask what script or device they're using — you already know. Get straight to the solution.`;
+
+    const aiReply = await askOpenAI(user.id, aiPrompt);
+
+    // Send AI response in chunks if needed
+    const MAX = 1900;
+    if (aiReply.length <= MAX) {
+      await ticketChannel.send(aiReply);
+    } else {
+      const chunks = [];
+      let current = '';
+      for (const line of aiReply.split('
+')) {
+        if ((current + '
+' + line).length > MAX) {
+          if (current) chunks.push(current.trim());
+          current = line;
+        } else {
+          current = current ? current + '
+' + line : line;
+        }
+      }
+      if (current) chunks.push(current.trim());
+      for (const chunk of chunks) await ticketChannel.send(chunk);
+    }
+
+    // Track inactivity from now
+    updateLastUserMessage(ticketChannel.id);
+
+    return interaction.reply({
+      content: `✅ Your support ticket has been created: ${ticketChannel}`,
+      ephemeral: true,
+    });
+
+  } catch (error) {
+    console.error('Error creating support ticket with intake:', error);
+    return interaction.reply({
+      content: '❌ Failed to create ticket. Please contact staff.',
+      ephemeral: true,
+    });
+  }
+}
+
+module.exports = { createTicket, createSupportTicketWithIntake, closeTicket, handleRatingReaction, generateTranscript, updateLastUserMessage, initInactivityTracker };
