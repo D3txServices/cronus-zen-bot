@@ -12,45 +12,47 @@ module.exports = {
       return interaction.reply({ content: '❌ You do not have permission.', ephemeral: true });
     }
 
-    const openButton = new ButtonBuilder()
-      .setCustomId('open_ticket')
-      .setLabel('🎫 Open a Ticket')
+    const supportButton = new ButtonBuilder()
+      .setCustomId('open_support_ticket')
+      .setLabel('🛠️ Support Ticket')
       .setStyle(ButtonStyle.Primary);
 
-    const row = new ActionRowBuilder().addComponents(openButton);
+    const buyButton = new ButtonBuilder()
+      .setCustomId('open_buy_ticket')
+      .setLabel('🛒 Buy / Upgrade')
+      .setStyle(ButtonStyle.Success);
+
+    const row = new ActionRowBuilder().addComponents(supportButton, buyButton);
 
     await interaction.channel.send({
       embeds: [{
         color: 0x00b4d8,
-        title: '🎮 Cronus Zen — Support Center',
+        title: '🎮 D3TX Services — Support Center',
         description: [
-          '**Need help with your Cronus Zen? We got you covered!**',
+          '**Welcome to D3TX Services — #1 Cronus Zen Script Provider!**',
           '',
-          'Click the button below to open a **private support ticket**.',
-          'Your ticket is only visible to you and staff.',
-          '',
-          '─────────────────────────────',
-          '',
-          '🤖 **AI Support** *(Instant — 24/7)*',
-          '> Our AI assistant responds immediately to your messages.',
-          '> Setup help, scripts, values, troubleshooting & more.',
-          '',
-          '👤 **Human Support** *(Staff check in regularly)*',
-          '> A real staff member will review your ticket.',
-          '> Complex issues, script requests, or anything the AI can\'t solve.',
+          'Choose a ticket type below:',
           '',
           '─────────────────────────────',
           '',
-          '📋 **What we help with:**',
-          '`Device Setup` `GamePacks` `GPC Scripts` `Anti-Recoil`',
-          '`Connection Issues` `Script Values` `Troubleshooting`',
+          '🛠️ **Support Ticket** *(Script issues, setup help, troubleshooting)*',
+          '> AI Assistant responds instantly 24/7.',
+          '> You\'ll be asked a few quick questions so we can help you faster.',
+          '',
+          '🛒 **Buy / Upgrade Ticket** *(Purchase scripts, ask about tiers)*',
+          '> Find out which script is right for you.',
+          '> Get the Patreon link and payment info.',
+          '',
+          '─────────────────────────────',
+          '',
+          '📋 **Scripts available for:** BO6, Warzone, R6, Apex, Fortnite, PUBG, NBA 2K, Rust, Valorant & more',
         ].join('\n'),
-        footer: { text: 'Cronus Zen Support Bot • AI + Human Support • 24/7' },
+        footer: { text: 'D3TX Services • AI + Human Support • 24/7' },
         timestamp: new Date().toISOString(),
       }],
       components: [row],
     });
 
-    return interaction.reply({ content: '✅ Support panel sent!', ephemeral: true });
+    return interaction.reply({ content: '✅ Panel sent!', ephemeral: true });
   },
 };
