@@ -42,11 +42,19 @@ module.exports = {
           .setPlaceholder('Describe what\'s wrong — e.g. anti-recoil not working, can\'t open mod menu, script won\'t load...')
           .setRequired(true);
 
+        const languageInput = new TextInputBuilder()
+          .setCustomId('language')
+          .setLabel('Preferred language for support?')
+          .setStyle(TextInputStyle.Short)
+          .setPlaceholder('e.g. English, French, Spanish, Portuguese...')
+          .setRequired(false);
+
         modal.addComponents(
           new ActionRowBuilder().addComponents(scriptInput),
           new ActionRowBuilder().addComponents(deviceInput),
           new ActionRowBuilder().addComponents(gameInput),
           new ActionRowBuilder().addComponents(issueInput),
+          new ActionRowBuilder().addComponents(languageInput),
         );
 
         return interaction.showModal(modal);
@@ -78,10 +86,11 @@ module.exports = {
         const device = interaction.fields.getTextInputValue('device');
         const game = interaction.fields.getTextInputValue('game');
         const issue = interaction.fields.getTextInputValue('issue');
+        const language = interaction.fields.getTextInputValue('language') || 'English';
 
         // Create the ticket with intake data
         const { createSupportTicketWithIntake } = require('../handlers/ticketManager');
-        return createSupportTicketWithIntake(interaction, { script, device, game, issue });
+        return createSupportTicketWithIntake(interaction, { script, device, game, issue, language });
       }
     }
 
