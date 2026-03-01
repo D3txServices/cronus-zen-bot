@@ -12,9 +12,12 @@ module.exports = {
     const guild = interaction.guild;
     const channel = interaction.channel;
 
-    // Owner only
-    if (guild.ownerId !== interaction.user.id) {
-      return interaction.reply({ content: '❌ This command is for the server owner only.', flags: 64 });
+    // Owner only — fetch guild fresh to ensure ownerId is loaded
+    const fetchedGuild = await guild.fetch();
+    const isOwner = fetchedGuild.ownerId === interaction.user.id;
+    const isAdmin = process.env.ADMIN_ROLE_ID && interaction.member.roles.cache.has(process.env.ADMIN_ROLE_ID);
+    if (!isOwner && !isAdmin) {
+      return interaction.reply({ content: `❌ This command is for the server owner only. (your id: ${interaction.user.id} | owner id: ${fetchedGuild.ownerId})`, flags: 64 });
     }
 
     if (!channel.name.startsWith('ticket-') && !channel.name.startsWith('support-') && !channel.name.startsWith('buy-')) {
