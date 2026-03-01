@@ -39,13 +39,15 @@ async function createTicket(interaction, type = 'support') {
   const categoryId = process.env.TICKET_CATEGORY_ID;
   const staffRoleId = process.env.STAFF_ROLE_ID;
 
+  const ticketPrefix = type === 'buy' ? 'buy-' : 'support-';
   const existingChannel = guild.channels.cache.find(
-    c => c.name.startsWith('ticket-') && c.topic === user.id
+    c => (c.name.startsWith(ticketPrefix) || c.name.startsWith('ticket-')) && c.topic === user.id
   );
 
   if (existingChannel) {
+    const typeName = type === 'buy' ? 'buy' : 'support';
     return interaction.reply({
-      content: `❌ You already have an open ticket: ${existingChannel}`,
+      content: `❌ You already have an open ${typeName} ticket: ${existingChannel} — please close it first before opening a new one.`,
       ephemeral: true,
     });
   }
@@ -565,7 +567,7 @@ async function createSupportTicketWithIntake(interaction, intakeData) {
 
   if (existingChannel) {
     return interaction.reply({
-      content: `❌ You already have an open ticket: ${existingChannel}`,
+      content: `❌ You already have an open support ticket: ${existingChannel} — please close it first before opening a new one.`,
       ephemeral: true,
     });
   }
