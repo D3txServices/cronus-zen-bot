@@ -1,5 +1,6 @@
 const { askOpenAI } = require('../handlers/openai');
 const { isAIPaused } = require('../handlers/humanTakeover');
+const { updateLastUserMessage } = require('../handlers/ticketManager');
 
 const cooldowns = new Map();
 const OWNER_ROLE_NAME = 'owner'; // matches your role name (case-insensitive)
