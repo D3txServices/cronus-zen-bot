@@ -483,15 +483,20 @@ async function generateTranscript(channel, guild, requestedBy = null) {
 }
 
 // ─── Inactivity tracking ──────────────────────────────────────────────────────
-// Map of channelId -> { lastUserMessage: Date, pinged30: bool }
+// Map of channelId -> { lastUserMessage: Date, lastPingTime: Date|null, pingCount: number }
+// Logic:
+//   - If no user message for 24hrs → send first ping
+//   - After ping: if user responds → reset everything (no more pings until 24hrs of silence again)
+//   - After ping: if user still silent for another 24hrs → ping again
+//   - After 3 days (4320 mins) of total silence since last user message → auto-close
 const inactivityMap = new Map();
 
 function updateLastUserMessage(channelId) {
-  const existing = inactivityMap.get(channelId) || { pinged30: false };
+  // User sent a message — fully reset the timer and clear all ping state
   inactivityMap.set(channelId, {
-    ...existing,
     lastUserMessage: new Date(),
-    pinged30: false, // reset 30min ping if they respond
+    lastPingTime: null,   // clear ping timer — they responded
+    pingCount: 0,
   });
 }
 
@@ -499,6 +504,8 @@ function initInactivityTracker(client) {
   // Check every 5 minutes
   setInterval(async () => {
     const now = Date.now();
+    const MINS_24H = 1440;
+    const MINS_3DAYS = 4320;
 
     for (const [guildId, guild] of client.guilds.cache) {
       const ticketChannels = guild.channels.cache.filter(
@@ -507,47 +514,63 @@ function initInactivityTracker(client) {
 
       for (const [channelId, channel] of ticketChannels) {
         try {
-          const data = inactivityMap.get(channelId);
+          let data = inactivityMap.get(channelId);
+
+          // Init from channel history if not tracked yet
           if (!data?.lastUserMessage) {
-            // No tracking data yet — fetch last message to init
             const msgs = await channel.messages.fetch({ limit: 10 });
             const lastUserMsg = [...msgs.values()].find(m => !m.author.bot);
             if (lastUserMsg) {
               inactivityMap.set(channelId, {
                 lastUserMessage: lastUserMsg.createdAt,
-                pinged30: false,
+                lastPingTime: null,
+                pingCount: 0,
               });
             }
             continue;
           }
 
-          const minsSinceActivity = (now - data.lastUserMessage.getTime()) / 60000;
+          const minsSinceUserMsg = (now - data.lastUserMessage.getTime()) / 60000;
           const openerId = channel.topic;
 
-          // 30 minute ping
-          if (minsSinceActivity >= 30 && !data.pinged30) {
-            inactivityMap.set(channelId, { ...data, pinged30: true });
-            try {
-              const member = await guild.members.fetch(openerId);
-              await channel.send({
-                content: `Hey ${member} — are you still there? Let us know if you still need help or we'll close this ticket automatically in 24 hours if there's no response.`,
-              });
-            } catch {}
-          }
-
-          // 24 hour auto-close
-          if (minsSinceActivity >= 4320) {
+          // ── Auto-close after 3 days of silence ──────────────────
+          if (minsSinceUserMsg >= MINS_3DAYS) {
             inactivityMap.delete(channelId);
             try {
-              await channel.send('⏰ This ticket has been automatically closed due to 24 hours of inactivity.');
-              // Generate transcript before closing
-              await generateTranscript(channel, guild, 'Auto-Close (24hr inactivity)');
+              await channel.send('⏰ This ticket has been automatically closed due to 3 days of inactivity.');
+              await generateTranscript(channel, guild, 'Auto-Close (3 day inactivity)');
               await learnFromTicket([...(await channel.messages.fetch({ limit: 100 })).values()].reverse());
               await channel.delete();
             } catch (err) {
               console.error('Auto-close error:', err.message);
             }
+            continue;
           }
+
+          // ── Ping logic ───────────────────────────────────────────
+          // Only ping if user has been silent for 24h
+          if (minsSinceUserMsg < MINS_24H) continue;
+
+          // Check if we need to send a ping:
+          // - No ping sent yet → send first ping
+          // - Ping was sent → only send next ping if 24h passed since LAST PING (and user still hasn't responded)
+          const shouldPing = !data.lastPingTime ||
+            ((now - data.lastPingTime.getTime()) / 60000 >= MINS_24H);
+
+          if (shouldPing) {
+            inactivityMap.set(channelId, {
+              ...data,
+              lastPingTime: new Date(),
+              pingCount: (data.pingCount || 0) + 1,
+            });
+            try {
+              const member = await guild.members.fetch(openerId);
+              await channel.send({
+                content: `Hey ${member} — are you still there? Let us know if you still need help, otherwise this ticket will be automatically closed after 3 days of no response.`,
+              });
+            } catch {}
+          }
+
         } catch {}
       }
     }
