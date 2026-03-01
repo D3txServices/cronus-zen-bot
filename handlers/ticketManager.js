@@ -619,6 +619,7 @@ async function createSupportTicketWithIntake(interaction, intakeData) {
           { name: '🎮 Script', value: intakeData.script, inline: true },
           { name: '📱 Device/Platform', value: intakeData.device, inline: true },
           { name: '🎯 Game', value: intakeData.game, inline: true },
+          { name: '🌐 Language', value: intakeData.language || 'English', inline: true },
           { name: '❓ Issue', value: intakeData.issue, inline: false },
         ],
         footer: { text: 'D3TX Services Support • AI is reviewing your issue now' },
@@ -629,12 +630,15 @@ async function createSupportTicketWithIntake(interaction, intakeData) {
 
     // Feed intake info to AI as first message so it can respond immediately
     const { askOpenAI } = require('./openai');
+    const lang = intakeData.language || 'English';
     const aiPrompt = `[INTAKE FORM — Customer just opened a support ticket]
 Script: ${intakeData.script}
 Device/Platform: ${intakeData.device}
 Game: ${intakeData.game}
 Issue: ${intakeData.issue}
+Language: ${lang}
 
+IMPORTANT: Respond entirely in ${lang}. If you don't know that language, respond in English.
 Based on this info, give them an immediate, specific fix for their issue. Don't ask what script or device they're using — you already know. Get straight to the solution.`;
 
     const aiReply = await askOpenAI(user.id, aiPrompt);
