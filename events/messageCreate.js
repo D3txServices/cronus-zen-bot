@@ -23,7 +23,7 @@ module.exports = {
     if (message.author.bot) return;
 
     const supportChannelId = process.env.SUPPORT_CHANNEL_ID;
-    const isTicket = message.channel.name?.startsWith('ticket-');
+    const isTicket = message.channel.name?.startsWith('ticket-') || message.channel.name?.startsWith('support-') || message.channel.name?.startsWith('buy-');
     const isSupport = message.channel.id === supportChannelId;
 
     if (!isSupport && !isTicket) return;
