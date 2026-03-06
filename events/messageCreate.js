@@ -24,6 +24,7 @@ module.exports = {
 
     const supportChannelId = process.env.SUPPORT_CHANNEL_ID;
     const isTicket = message.channel.name?.startsWith('ticket-') || message.channel.name?.startsWith('support-') || message.channel.name?.startsWith('buy-');
+    const channelType = message.channel.name?.startsWith('buy-') ? 'buy' : 'support';
     const isSupport = message.channel.id === supportChannelId;
 
     if (!isSupport && !isTicket) return;
@@ -44,7 +45,7 @@ module.exports = {
     message.channel.sendTyping();
 
     try {
-      const reply = await askOpenAI(message.author.id, message.content);
+      const reply = await askOpenAI(message.author.id, message.content, channelType);
 
       // ── Helper: send long messages in chunks ───────────────
       async function sendInChunks(channel, text, replyToMsg = null) {
