@@ -22,7 +22,7 @@ module.exports = {
       return interaction.reply({ content: '❌ Only staff can use this command.', ephemeral: true });
     }
 
-    if (!interaction.channel.name.startsWith('ticket-')) {
+    if (!interaction.channel.name.startsWith('ticket-') && !interaction.channel.name.startsWith('support-') && !interaction.channel.name.startsWith('buy-')) {
       return interaction.reply({ content: '❌ This command only works inside ticket channels.', ephemeral: true });
     }
 
