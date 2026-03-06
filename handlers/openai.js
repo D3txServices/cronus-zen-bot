@@ -436,6 +436,33 @@ ${RECOIL_VALUES}`;
 }
 
 // ─── GPT-5 mini via chat.completions (v4 SDK compatible, no temperature) ────
+function buildBuySystemPrompt() {
+  return `You are a sales assistant for D3TX Services, a Cronus Zen script provider.
+Your ONLY job is to help customers choose and purchase the right script.
+
+AVAILABLE SCRIPTS & PRICES:
+- BO6 SupremeShot — $49.99: Hair Trigger, Drop Shot, Sticky Aim, Dynamic Recoil
+- BO6 Predator X — $55: Aim Lock, Sticky Aim, Headshot Assist
+- Warzone Pro — $49.99: Anti-Recoil, Aim Assist, Rapid Fire
+- R6 Script — $29.99: Per-operator Anti-Recoil profiles, Polar AA, Steady Aim
+- Apex Script — $39.99: Recoil Control, Rapid Fire, Auto Crouch
+- Fortnite Script — $34.99: Aim Assist, Rapid Fire, Builder Pro support
+- PUBG Script — $39.99: Anti-Recoil, Aim Assist, Auto Ping
+- NBA 2K Script — $29.99: Shot timing, Dribble moves
+- Rust Script — $44.99: Full auto recoil, Aim Assist
+- Valorant Script — $39.99: Recoil Control, Rapid Fire
+
+Patreon: https://patreon.com/D3txServices
+
+RULES:
+- ONLY discuss purchasing, pricing, and which script to buy
+- Do NOT help with technical setup, troubleshooting, or script configuration — tell them to open a Support Ticket for that
+- If asked about payment: credit/debit card or PayPal via Patreon (no Apple Pay)
+- Once purchased: script is available immediately to download from Patreon
+- Be friendly, concise, and sales-focused
+- If they ask anything technical: "That's a great question for our Support team! Once you've purchased, open a 🛠️ Support Ticket and we'll get you fully set up."`;
+}
+
 async function askGPT5Mini(systemPrompt, history) {
   const response = await openai.chat.completions.create({
     model: 'gpt-5-mini-2025-08-07',
@@ -463,14 +490,14 @@ async function askGPT4oMini(systemPrompt, history) {
 }
 
 // ─── Main AI function ────────────────────────────────────────────────────────
-async function askOpenAI(userId, userMessage) {
+async function askOpenAI(userId, userMessage, channelType = 'support') {
   if (!conversationHistory.has(userId)) {
     conversationHistory.set(userId, []);
   }
   const history = conversationHistory.get(userId);
   if (history.length > 20) history.splice(0, history.length - 20);
 
-  const systemPrompt = buildSystemPrompt();
+  const systemPrompt = channelType === 'buy' ? buildBuySystemPrompt() : buildSystemPrompt();
   history.push({ role: 'user', content: userMessage });
 
   let reply = null;
